@@ -1,0 +1,25 @@
+# API Keys and Secrets
+sk-[a-zA-Z0-9]{32,}
+api[_-]?key\s*[:=]\s*["'][^"']+["']
+secret[_-]?key\s*[:=]\s*["'][^"']+["']
+
+# Passwords
+password\s*[:=]\s*["'][^"']{8,}["']
+
+# Database Connection Strings
+postgres://[^:]+:[^@]+@
+mysql://[^:]+:[^@]+@
+mongodb(\+srv)?://[^:]+:[^@]+@
+
+# AWS Keys
+AKIA[0-9A-Z]{16}
+aws[_-]?secret[_-]?access[_-]?key
+
+# JWT Secrets
+jwt[_-]?secret\s*[:=]\s*["'][^"']+["']
+
+# Bearer Tokens
+Bearer\s+[A-Za-z0-9\-\._~\+\/]+=*
+
+# Private Keys
+-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----

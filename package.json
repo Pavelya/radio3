@@ -1,0 +1,19 @@
+{
+  "name": "ai-radio-2525",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "quality-gate": "./ops/quality-gate.sh",
+    "quality-gate:fix": "./ops/quality-gate.sh --fix",
+    "check:security": "./ops/scripts/check-hardcoded-values.sh",
+    "check:types": "./ops/scripts/check-type-imports.sh",
+    "check:logging": "./ops/scripts/check-logging.sh",
+    "check:todos": "./ops/scripts/check-todos.sh",
+    "check:env-vars": "./ops/scripts/check-env-vars.sh",
+    "check:sql": "./ops/scripts/check-sql-injection.sh",
+    "test": "pnpm -r test",
+    "test:integration": "pnpm -r test:integration",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build"
+  }
+}
