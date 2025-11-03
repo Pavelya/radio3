@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import type { Chunk, ChunkConfig } from '@radio/core';
 import { Tokenizer } from './tokenizer';
 import { MarkdownCleaner } from './markdown-cleaner';
+import { LanguageDetector } from './language-detector';
 
 /**
  * Text chunking service
@@ -10,11 +11,13 @@ import { MarkdownCleaner } from './markdown-cleaner';
 export class Chunker {
   private tokenizer: Tokenizer;
   private cleaner: MarkdownCleaner;
+  private detector: LanguageDetector;
   private config: ChunkConfig;
 
   constructor(config?: Partial<ChunkConfig>) {
     this.tokenizer = new Tokenizer();
     this.cleaner = new MarkdownCleaner();
+    this.detector = new LanguageDetector();
     this.config = {
       minTokens: config?.minTokens ?? 300,
       maxTokens: config?.maxTokens ?? 800,
@@ -25,7 +28,10 @@ export class Chunker {
   /**
    * Chunk a document into pieces
    */
-  chunk(text: string): Chunk[] {
+  chunk(text: string, providedLang?: string): Chunk[] {
+    // Detect language if not provided
+    const lang = providedLang || this.detector.detect(text);
+
     // Clean Markdown
     const cleaned = this.cleaner.clean(text);
 
@@ -42,7 +48,7 @@ export class Chunker {
 
       // If adding this sentence exceeds max, save current chunk
       if (currentTokens + sentenceTokens > this.config.maxTokens && currentChunk.length > 0) {
-        chunks.push(this.createChunk(currentChunk.join(' '), chunks.length));
+        chunks.push(this.createChunk(currentChunk.join(' '), chunks.length, lang));
 
         // Start new chunk with overlap
         currentChunk = this.getOverlapSentences(currentChunk);
@@ -55,7 +61,7 @@ export class Chunker {
 
     // Save final chunk
     if (currentChunk.length > 0) {
-      chunks.push(this.createChunk(currentChunk.join(' '), chunks.length));
+      chunks.push(this.createChunk(currentChunk.join(' '), chunks.length, lang));
     }
 
     // Filter out chunks that are too small
@@ -101,7 +107,7 @@ export class Chunker {
   /**
    * Create chunk object with metadata
    */
-  private createChunk(text: string, index: number): Chunk {
+  private createChunk(text: string, index: number, lang: string): Chunk {
     const tokenCount = this.tokenizer.countTokens(text);
     const contentHash = this.hashContent(text);
 
@@ -109,7 +115,8 @@ export class Chunker {
       chunkText: text,
       chunkIndex: index,
       tokenCount,
-      contentHash
+      contentHash,
+      lang
     };
   }
 
