@@ -13,3 +13,4 @@ export * from './kb-index-status.schema';
 export * from './voices.schema';
 export * from './rag.schema';
 export * from './time.schema';
+export * from './chunking.schema';
