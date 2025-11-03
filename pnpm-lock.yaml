@@ -61,6 +61,9 @@ importers:
       '@radio/core':
         specifier: workspace:*
         version: link:../../packages/radio-core
+      '@supabase/supabase-js':
+        specifier: ^2.39.0
+        version: 2.78.0
       axios:
         specifier: ^1.6.0
         version: 1.13.1

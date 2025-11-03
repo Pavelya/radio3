@@ -3,12 +3,14 @@
   "version": "0.0.1",
   "scripts": {
     "build": "tsc",
+    "start": "node dist/src/index.js",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch src/index.ts"
   },
   "dependencies": {
     "@radio/core": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
     "gpt-3-encoder": "^1.1.4",
     "marked": "^11.0.0",
     "franc-min": "^6.1.0",
