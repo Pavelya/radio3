@@ -14,3 +14,4 @@ export * from './voices.schema';
 export * from './rag.schema';
 export * from './time.schema';
 export * from './chunking.schema';
+export * from './embedding.schema';

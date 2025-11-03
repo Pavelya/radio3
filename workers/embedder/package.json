@@ -11,7 +11,8 @@
     "@radio/core": "workspace:*",
     "gpt-3-encoder": "^1.1.4",
     "marked": "^11.0.0",
-    "franc-min": "^6.1.0"
+    "franc-min": "^6.1.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
