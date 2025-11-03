@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * Simple migration runner for Supabase
+ * Simple migration runner for PostgreSQL
  *
  * Usage:
  *   node infra/migrate.js up    # Run migrations
  *   node infra/migrate.js down  # Rollback last migration
  */
 
-const { createClient } = require('@supabase/supabase-js');
-const { createLogger } = require('@radio/core');
+const { createLogger } = require('../packages/radio-core/dist/index.js');
+const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -17,15 +17,16 @@ require('dotenv').config();
 
 const logger = createLogger('migration-runner');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
-async function runMigration(direction = 'up') {
+function runMigration(direction = 'up') {
   const migrationsDir = path.join(__dirname, 'migrations');
   const files = fs.readdirSync(migrationsDir)
-    .filter(f => f.endsWith(direction === 'up' ? '.sql' : '_down.sql'))
+    .filter(f => {
+      if (direction === 'up') {
+        return f.endsWith('.sql') && !f.endsWith('_down.sql');
+      } else {
+        return f.endsWith('_down.sql');
+      }
+    })
     .sort();
 
   if (direction === 'down') {
@@ -34,11 +35,12 @@ async function runMigration(direction = 'up') {
 
   for (const file of files) {
     logger.info({ file }, 'Running migration');
-    const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+    const sqlFile = path.join(migrationsDir, file);
 
     try {
-      const { error } = await supabase.rpc('exec_sql', { sql });
-      if (error) throw error;
+      execSync(`psql ${process.env.DATABASE_URL} -f ${sqlFile}`, {
+        stdio: 'inherit'
+      });
       logger.info({ file }, 'Migration completed');
     } catch (error) {
       logger.error({ file, error: error.message }, 'Migration failed');
