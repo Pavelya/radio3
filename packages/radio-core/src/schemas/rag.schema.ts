@@ -6,21 +6,18 @@ import { z } from 'zod';
 export const ragQuerySchema = z.object({
   // Query
   text: z.string().min(1).describe('Search query text'),
-  
+  lang: z.string().optional().describe('Language hint'),
+
   // Filters
   filters: z.object({
-    lang: z.string().nullable().optional().describe('Language filter'),
-    topics: z.array(z.string()).nullable().optional().describe('Topic filters'),
-    date_range: z.object({
-      start: z.string().datetime().nullable().optional(),
-      end: z.string().datetime().nullable().optional()
-    }).nullable().optional().describe('Date range filter')
-  }).nullable().optional(),
-  
+    source_types: z.array(z.enum(['universe_doc', 'event'])).optional().describe('Source type filters'),
+    tags: z.array(z.string()).optional().describe('Tag filters')
+  }).optional(),
+
   // Parameters
-  top_k: z.number().int().positive().default(12).describe('Number of results'),
+  topK: z.number().int().positive().default(12).describe('Number of results'),
   recency_boost: z.boolean().default(true).describe('Boost recent content'),
-  reference_time: z.string().datetime().nullable().optional().describe('Reference time for recency')
+  reference_time: z.string().optional().describe('Reference time for recency (ISO datetime)')
 });
 
 export type RAGQuery = z.infer<typeof ragQuerySchema>;
@@ -28,24 +25,24 @@ export type RAGQuery = z.infer<typeof ragQuerySchema>;
 /**
  * RAG result chunk schema
  */
-export const ragResultChunkSchema = z.object({
-  chunk_id: z.string().uuid().describe('Chunk identifier'),
-  doc_id: z.string().uuid().describe('Source document identifier'),
+export const ragChunkSchema = z.object({
+  chunk_id: z.string().describe('Chunk identifier'),
+  source_id: z.string().describe('Source document identifier'),
+  source_type: z.enum(['universe_doc', 'event']).describe('Source type'),
   chunk_text: z.string().describe('Chunk text content'),
-  doc_title: z.string().describe('Source document title'),
   vector_score: z.number().describe('Vector similarity score'),
   lexical_score: z.number().describe('Lexical match score'),
-  final_score: z.number().describe('Combined relevance score'),
-  metadata: z.record(z.unknown()).nullable().optional().describe('Additional metadata')
+  recency_score: z.number().describe('Recency boost score'),
+  final_score: z.number().describe('Combined relevance score')
 });
 
-export type RAGResultChunk = z.infer<typeof ragResultChunkSchema>;
+export type RAGChunk = z.infer<typeof ragChunkSchema>;
 
 /**
  * RAG result schema - output from retrieval
  */
 export const ragResultSchema = z.object({
-  chunks: z.array(ragResultChunkSchema).describe('Retrieved chunks'),
+  chunks: z.array(ragChunkSchema).describe('Retrieved chunks'),
   query_time_ms: z.number().describe('Query execution time'),
   total_results: z.number().describe('Total matching results')
 });
