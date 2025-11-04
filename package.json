@@ -14,7 +14,9 @@
     "test": "pnpm -r test",
     "test:integration": "pnpm -r test:integration",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "seed": "node infra/seed.js",
+    "seed:reset": "node infra/migrate.js down && node infra/migrate.js up && node infra/seed.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

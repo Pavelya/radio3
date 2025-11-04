@@ -1,0 +1,30 @@
+[
+  {
+    "title": "Breakthrough in Quantum Agriculture Announced",
+    "body": "Scientists at Europa Station have successfully grown crops using quantum-entangled photosynthesis, potentially solving food scarcity in deep-space colonies.\n\nDr. Kenji Yamamoto's team published results showing 300% increase in growth rates with 50% less energy. The technique involves entangling chlorophyll molecules with a quantum field generator. Initial trials will begin on Titan Settlement next month.",
+    "event_date": "2025-11-02T10:00:00Z",
+    "importance": 8,
+    "tags": ["science", "agriculture", "quantum-tech", "europa", "food-security"]
+  },
+  {
+    "title": "Andromedan Cultural Festival Opens on Mars",
+    "body": "First-ever Andromedan cultural festival showcasing art, music, and literature opens in New Shanghai, Mars Colony Prime.\n\nThe three-week festival features Andromedan crystalline sculptures, thermal art installations, and translated literature. Ambassador Resonance-7 emphasized this as a milestone in human-Andromedan relations. Festival runs through November 25th.",
+    "event_date": "2025-11-01T14:00:00Z",
+    "importance": 7,
+    "tags": ["culture", "andromedans", "mars", "festival", "first-contact"]
+  },
+  {
+    "title": "Tau Ceti Colony Votes on Federation Membership",
+    "body": "The independent Tau Ceti Outpost holds referendum on joining the Federation after decades of autonomy.\n\nPolls show narrow margin. Proponents cite economic benefits and protection. Opponents fear loss of independence and cultural identity. Results expected within 48 hours. This could set precedent for other frontier colonies.",
+    "event_date": "2025-11-02T08:00:00Z",
+    "importance": 9,
+    "tags": ["politics", "tau-ceti", "federation", "colony-rights", "referendum"]
+  },
+  {
+    "title": "Historic Earth-Mars Supernova Visible Tonight",
+    "body": "Supernova SN-2525A in Cygnus constellation will be visible to naked eye from Earth and Mars tonight - first time in 500 years.\n\nAstronomers recommend viewing after 20:00 local time for optimal visibility. The supernova, located 5,000 light-years away, reached peak brightness last week. This is a once-in-a-lifetime celestial event.",
+    "event_date": "2025-11-02T20:00:00Z",
+    "importance": 6,
+    "tags": ["science", "astronomy", "supernova", "earth", "mars", "sky-watching"]
+  }
+]

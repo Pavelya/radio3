@@ -1,0 +1,46 @@
+[
+  {
+    "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "name": "Standard News Hour",
+    "description": "Standard hourly format for news-focused programming",
+    "slots": [
+      { "slot_type": "station_id", "duration_sec": 30, "order_index": 0 },
+      { "slot_type": "news", "duration_sec": 900, "order_index": 1 },
+      { "slot_type": "music", "duration_sec": 180, "order_index": 2 },
+      { "slot_type": "news", "duration_sec": 600, "order_index": 3 },
+      { "slot_type": "music", "duration_sec": 240, "order_index": 4 },
+      { "slot_type": "culture", "duration_sec": 720, "order_index": 5 },
+      { "slot_type": "music", "duration_sec": 180, "order_index": 6 },
+      { "slot_type": "station_id", "duration_sec": 30, "order_index": 7 },
+      { "slot_type": "tech", "duration_sec": 420, "order_index": 8 }
+    ]
+  },
+  {
+    "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "name": "Culture Mix",
+    "description": "Balanced format emphasizing culture and society",
+    "slots": [
+      { "slot_type": "station_id", "duration_sec": 30, "order_index": 0 },
+      { "slot_type": "news", "duration_sec": 480, "order_index": 1 },
+      { "slot_type": "music", "duration_sec": 240, "order_index": 2 },
+      { "slot_type": "culture", "duration_sec": 900, "order_index": 3 },
+      { "slot_type": "music", "duration_sec": 180, "order_index": 4 },
+      { "slot_type": "culture", "duration_sec": 600, "order_index": 5 },
+      { "slot_type": "music", "duration_sec": 240, "order_index": 6 },
+      { "slot_type": "news", "duration_sec": 300, "order_index": 7 }
+    ]
+  },
+  {
+    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "name": "Interview Format",
+    "description": "Long-form interview and discussion format",
+    "slots": [
+      { "slot_type": "station_id", "duration_sec": 30, "order_index": 0 },
+      { "slot_type": "news", "duration_sec": 300, "order_index": 1 },
+      { "slot_type": "music", "duration_sec": 180, "order_index": 2 },
+      { "slot_type": "interview", "duration_sec": 1800, "order_index": 3 },
+      { "slot_type": "music", "duration_sec": 240, "order_index": 4 },
+      { "slot_type": "culture", "duration_sec": 420, "order_index": 5 }
+    ]
+  }
+]
