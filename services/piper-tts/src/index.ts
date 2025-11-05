@@ -7,9 +7,8 @@ async function main() {
   const port = parseInt(process.env.PORT || '5002');
 
   const server = new PiperServer();
-  server.start(port);
+  await server.start(port);
 
-  // Graceful shutdown
   process.on('SIGTERM', () => {
     logger.info('SIGTERM received, shutting down');
     process.exit(0);
