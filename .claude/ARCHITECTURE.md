@@ -461,3 +461,9 @@ sequenceDiagram
 | kb_chunks | id (uuid) | source_id | - |
 | kb_embeddings | id (uuid) | chunk_id | - |
 | kb_index_status | id (uuid) | source_id | state (enum) |
+
+---
+
+## Appendix D: Service Setup Guides
+
+- Piper TTS Setup: See [.claude/PIPER_TTS_SETUP.md](.claude/PIPER_TTS_SETUP.md)
