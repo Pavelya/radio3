@@ -7,6 +7,9 @@ ENV_VARS=$(grep -r -h -o \
   --include="*.ts" \
   --include="*.js" \
   --exclude-dir=node_modules \
+  --exclude-dir=.next \
+  --exclude-dir=dist \
+  --exclude-dir=build \
   . 2>/dev/null | sed 's/process\.env\.//' | sort -u)
 
 # Check if .env.example exists

@@ -12,7 +12,9 @@ if grep -r -n \
   --exclude="*.test.ts" \
   --exclude="*.spec.ts" \
   --exclude-dir=node_modules \
+  --exclude-dir=.next \
   --exclude-dir=dist \
+  --exclude-dir=build \
   . 2>/dev/null; then
   FOUND=1
 fi

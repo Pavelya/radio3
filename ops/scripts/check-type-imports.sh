@@ -11,7 +11,9 @@ if grep -r -n \
   --exclude="*.spec.ts" \
   --exclude="*.generated.ts" \
   --exclude-dir=node_modules \
+  --exclude-dir=.next \
   --exclude-dir=dist \
+  --exclude-dir=build \
   --exclude-dir=packages/radio-core \
   --exclude-dir=packages/radio-test-utils \
   apps/ workers/ 2>/dev/null; then

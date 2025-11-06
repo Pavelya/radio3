@@ -20,6 +20,7 @@ while IFS= read -r pattern; do
     --include="*.js" \
     --include="*.py" \
     --exclude-dir=node_modules \
+    --exclude-dir=.next \
     --exclude-dir=dist \
     --exclude-dir=build \
     --exclude-dir=.git \
