@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { EmbeddingService } from '../../../../workers/embedder/src/embedding/embedding-service';
+import { EmbeddingService } from '@radio/embedder-worker';
 import { createLogger, type RAGQuery, type RAGResult, type RAGChunk } from '@radio/core';
 
 const logger = createLogger('retrieval-service');

@@ -63,6 +63,12 @@ export default async function DashboardLayout({
                   Format Clocks
                 </Link>
                 <Link
+                  href="/dashboard/broadcast-schedule"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  Schedule
+                </Link>
+                <Link
                   href="/dashboard/segments"
                   className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >

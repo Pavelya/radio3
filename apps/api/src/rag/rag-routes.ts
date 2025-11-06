@@ -4,7 +4,16 @@ import { createLogger, type RAGQuery } from '@radio/core';
 
 const logger = createLogger('rag-routes');
 const router: ExpressRouter = Router();
-const retrievalService = new RetrievalService();
+
+// Lazy instantiation to avoid requiring env vars at startup
+let retrievalService: RetrievalService | null = null;
+
+function getRetrievalService(): RetrievalService {
+  if (!retrievalService) {
+    retrievalService = new RetrievalService();
+  }
+  return retrievalService;
+}
 
 /**
  * POST /rag/retrieve
@@ -21,7 +30,7 @@ router.post('/retrieve', async (req, res) => {
       });
     }
 
-    const result = await retrievalService.retrieve(query);
+    const result = await getRetrievalService().retrieve(query);
 
     res.json(result);
 

@@ -1,6 +1,12 @@
 {
   "name": "@radio/embedder-worker",
   "version": "0.0.1",
+  "type": "module",
+  "main": "./src/lib.ts",
+  "exports": {
+    ".": "./src/lib.ts",
+    "./worker": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/src/index.js",

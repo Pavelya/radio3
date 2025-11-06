@@ -11,10 +11,14 @@
   },
   "dependencies": {
     "@radio/core": "workspace:*",
+    "@radio/embedder-worker": "workspace:*",
     "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
     "@types/node": "^20.12.7",
     "tsx": "^4.7.2",
