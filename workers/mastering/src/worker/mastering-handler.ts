@@ -28,6 +28,36 @@ export class MasteringHandler {
   }
 
   /**
+   * Check if identical audio already exists (dedupe)
+   */
+  private async checkForDuplicate(contentHash: string): Promise<string | null> {
+    logger.debug({ contentHash }, 'Checking for duplicate audio');
+
+    const { data, error } = await this.db
+      .from('assets')
+      .select('id, storage_path, lufs_integrated, peak_db, validation_status')
+      .eq('content_hash', contentHash)
+      .eq('validation_status', 'passed')
+      .not('lufs_integrated', 'is', null)
+      .limit(1);
+
+    if (error) {
+      logger.error({ error }, 'Failed to check for duplicates');
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      logger.info({
+        contentHash,
+        existingAssetId: data[0].id
+      }, 'Duplicate audio found');
+      return data[0].id;
+    }
+
+    return null;
+  }
+
+  /**
    * Process audio_finalize job
    */
   async handle(job: any): Promise<void> {
@@ -42,6 +72,35 @@ export class MasteringHandler {
 
       if (!asset) {
         throw new Error(`Asset not found: ${asset_id}`);
+      }
+
+      // 1.5 CHECK FOR DUPLICATE (NEW)
+      if (asset.content_hash) {
+        const duplicateAssetId = await this.checkForDuplicate(asset.content_hash);
+
+        if (duplicateAssetId && duplicateAssetId !== asset_id) {
+          logger.info({
+            segment_id,
+            originalAssetId: asset_id,
+            duplicateAssetId
+          }, 'Reusing existing normalized audio');
+
+          // Update segment to point to existing asset
+          await this.updateSegmentAsset(segment_id, duplicateAssetId);
+
+          // Update segment to ready
+          await this.updateSegmentState(segment_id, 'ready');
+
+          // Mark original asset as duplicate (optional)
+          await this.updateAsset(asset_id, {
+            validation_status: 'passed',
+            validation_errors: null,
+            metadata: { duplicate_of: duplicateAssetId }
+          });
+
+          logger.info({ segment_id }, 'Mastering skipped (duplicate reused)');
+          return; // SKIP MASTERING
+        }
       }
 
       // 2. Download raw audio
@@ -211,6 +270,27 @@ export class MasteringHandler {
     if (updateError) {
       logger.error({ error: updateError, segmentId }, 'Failed to update segment state');
       throw updateError;
+    }
+  }
+
+  /**
+   * Update segment asset reference
+   */
+  private async updateSegmentAsset(
+    segmentId: string,
+    assetId: string
+  ): Promise<void> {
+    const { error } = await this.db
+      .from('segments')
+      .update({
+        asset_id: assetId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', segmentId);
+
+    if (error) {
+      logger.error({ error, segmentId }, 'Failed to update segment asset');
+      throw error;
     }
   }
 }
