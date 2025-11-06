@@ -16,3 +16,4 @@ export * from './time.schema';
 export * from './chunking.schema';
 export * from './embedding.schema';
 export * from './worker.schema';
+export * from './script.schema';

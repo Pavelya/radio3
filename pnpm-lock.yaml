@@ -42,6 +42,9 @@ importers:
 
   packages/radio-core:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.20.9
+        version: 0.20.9
       date-fns:
         specifier: ^3.0.0
         version: 3.6.0

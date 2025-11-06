@@ -13,3 +13,9 @@ export * from './utils';
 
 // Constants
 export * from './constants';
+
+// Services
+export * from './services/script-generator';
+
+// Prompts
+export * from './prompts/script-generation';
