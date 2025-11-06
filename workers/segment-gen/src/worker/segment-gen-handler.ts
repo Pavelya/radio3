@@ -2,6 +2,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ScriptGenerator } from '../llm/script-generator';
 import { RAGClient } from '../rag/rag-client';
 import { createLogger, type SegmentGenPayload } from '@radio/core';
+import { TTSClient } from '../tts/tts-client';
+import { AssetStorage } from '../storage/asset-storage';
+import { promises as fs } from 'fs';
 
 const logger = createLogger('segment-gen-handler');
 
@@ -13,6 +16,8 @@ export class SegmentGenHandler {
   private db: SupabaseClient;
   private scriptGen: ScriptGenerator;
   private ragClient: RAGClient;
+  private ttsClient: TTSClient;
+  private assetStorage: AssetStorage;
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -26,6 +31,8 @@ export class SegmentGenHandler {
     this.db = createClient(supabaseUrl, supabaseKey);
     this.scriptGen = new ScriptGenerator(anthropicKey);
     this.ragClient = new RAGClient();
+    this.ttsClient = new TTSClient();
+    this.assetStorage = new AssetStorage();
 
     logger.info('Segment generation handler initialized');
   }
@@ -111,9 +118,38 @@ export class SegmentGenHandler {
       // 9. Update state to rendering (TTS next)
       await this.updateSegmentState(segment_id, 'rendering');
 
-      // 10. Enqueue TTS job (G6 - next task)
-      // TODO: Implement in G6
-      logger.info({ segment_id }, 'Segment generation complete (TTS pending)');
+      // 10. Synthesize speech
+      logger.info({ segment_id }, 'Starting TTS synthesis');
+
+      const audioPath = await this.ttsClient.synthesize({
+        text: scriptResult.scriptMd,
+        model: dj.voice_id || 'en_US-lessac-medium',
+        speed: 1.0,
+        use_cache: true
+      });
+
+      // 11. Store audio asset
+      const asset = await this.assetStorage.storeAudio(audioPath, 'speech');
+
+      // Clean up temp file
+      await fs.unlink(audioPath);
+
+      // 12. Update segment with asset
+      await this.updateSegmentWithAsset(segment_id, asset.assetId, asset.durationSec);
+
+      logger.info({
+        segment_id,
+        assetId: asset.assetId,
+        duration: asset.durationSec
+      }, 'Audio asset stored');
+
+      // 13. Update state to normalizing
+      await this.updateSegmentState(segment_id, 'normalizing');
+
+      // 14. Enqueue mastering job
+      await this.enqueueMasteringJob(segment_id, asset.assetId);
+
+      logger.info({ segment_id }, 'Segment generation complete');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -164,7 +200,7 @@ export class SegmentGenHandler {
 
     const { data: dj, error: djError } = await this.db
       .from('djs')
-      .select('name, personality')
+      .select('name, personality, voice_id')
       .eq('id', program.dj_id)
       .single();
 
@@ -242,5 +278,54 @@ export class SegmentGenHandler {
     };
 
     return durations[slotType] || 60;
+  }
+
+  /**
+   * Update segment with asset ID and duration
+   */
+  private async updateSegmentWithAsset(
+    segmentId: string,
+    assetId: string,
+    durationSec: number
+  ): Promise<void> {
+    const { error } = await this.db
+      .from('segments')
+      .update({
+        asset_id: assetId,
+        duration_sec: durationSec,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', segmentId);
+
+    if (error) {
+      logger.error({ error, segmentId }, 'Failed to update segment with asset');
+      throw error;
+    }
+  }
+
+  /**
+   * Enqueue audio mastering job
+   */
+  private async enqueueMasteringJob(
+    segmentId: string,
+    assetId: string
+  ): Promise<void> {
+    const { data, error } = await this.db.rpc('enqueue_job', {
+      p_job_type: 'audio_finalize',
+      p_payload: {
+        segment_id: segmentId,
+        asset_id: assetId,
+        content_type: 'speech'
+      },
+      p_priority: 5,
+      p_schedule_delay_sec: 0
+    });
+
+    if (error) {
+      logger.error({ error, segmentId, assetId }, 'Failed to enqueue mastering job');
+      throw error;
+    }
+
+    logger.info({ segmentId, assetId, jobId: data }, 'Mastering job enqueued');
   }
 }
