@@ -11,7 +11,8 @@
   "dependencies": {
     "@radio/core": "workspace:*",
     "@anthropic-ai/sdk": "^0.20.0",
-    "@supabase/supabase-js": "^2.39.0"
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
