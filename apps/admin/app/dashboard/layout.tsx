@@ -39,6 +39,12 @@ export default async function DashboardLayout({
                   Content
                 </Link>
                 <Link
+                  href="/dashboard/events"
+                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-gray-900"
+                >
+                  Events
+                </Link>
+                <Link
                   href="/dashboard/djs"
                   className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
