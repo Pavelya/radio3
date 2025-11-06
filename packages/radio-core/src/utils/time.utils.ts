@@ -20,3 +20,18 @@ export function toFutureTime(realDate: Date, yearOffset: number): Date {
 export function formatBroadcastTime(date: Date): string {
   return format(date, "EEEE, MMMM d, yyyy 'at' HH:mm");
 }
+
+/**
+ * Get the future year offset from environment
+ */
+export function getFutureYearOffset(): number {
+  return parseInt(process.env.FUTURE_YEAR_OFFSET || '500', 10);
+}
+
+/**
+ * Get the current future year (current year + offset)
+ */
+export function getFutureYear(baseYear?: number): number {
+  const year = baseYear || new Date().getFullYear();
+  return year + getFutureYearOffset();
+}
