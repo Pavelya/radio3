@@ -18,7 +18,7 @@ export default async function BroadcastSchedulePage() {
     .order('start_time');
 
   // Fetch all active programs
-  const { data: programs, error: programsError } = await supabase
+  const { data: programsData, error: programsError } = await supabase
     .from('programs')
     .select(`
       id,
@@ -27,6 +27,13 @@ export default async function BroadcastSchedulePage() {
     `)
     .eq('active', true)
     .order('name');
+
+  // Transform programs data to ensure dj is a single object
+  const programs = (programsData || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    dj: Array.isArray(p.dj) ? p.dj[0] : p.dj,
+  }));
 
   if (scheduleError || programsError) {
     return (
