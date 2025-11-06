@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import AudioPlayer from '@/components/audio-player';
 
 export default async function SegmentDetailPage({
   params,
@@ -149,13 +150,14 @@ export default async function SegmentDetailPage({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Audio Asset
             </label>
-            <div className="bg-gray-50 p-4 rounded">
-              <p className="text-sm">
-                <strong>LUFS:</strong> {segment.assets.lufs_integrated || '-'} |{' '}
-                <strong>Peak:</strong> {segment.assets.peak_db || '-'}dB |{' '}
-                <strong>Status:</strong> {segment.assets.validation_status}
-              </p>
-              {/* Audio player will be added in A7 */}
+            <AudioPlayer
+              assetId={segment.assets.id}
+              storagePath={segment.assets.storage_path}
+            />
+            <div className="mt-2 text-sm text-gray-600">
+              <strong>LUFS:</strong> {segment.assets.lufs_integrated || '-'} |{' '}
+              <strong>Peak:</strong> {segment.assets.peak_db || '-'}dB |{' '}
+              <strong>Status:</strong> {segment.assets.validation_status}
             </div>
           </div>
         )}
