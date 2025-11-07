@@ -82,7 +82,7 @@ export class SegmentGenHandler {
         slotType: segment.slot_type,
         targetDuration: this.getTargetDuration(segment.slot_type),
         djName: dj.name,
-        djPersonality: dj.personality,
+        djPersonality: dj.personality_traits,
         referenceTime: new Date().toISOString(),
         ragChunks: ragResult.chunks,
         futureYear: 2525
@@ -152,11 +152,15 @@ export class SegmentGenHandler {
       logger.info({ segment_id }, 'Segment generation complete');
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : String(error);
 
       logger.error({
         segment_id,
-        error: errorMessage
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        } : error
       }, 'Segment generation failed');
 
       // Update segment to failed
@@ -200,7 +204,7 @@ export class SegmentGenHandler {
 
     const { data: dj, error: djError } = await this.db
       .from('djs')
-      .select('name, personality, voice_id')
+      .select('name, personality_traits, voice_id')
       .eq('id', program.dj_id)
       .single();
 

@@ -72,17 +72,22 @@ export abstract class BaseWorker {
 
     logger.info({ channel }, 'Setting up listener');
 
-    // Create a raw SQL connection for LISTEN
-    const { data, error } = await this.db.rpc('exec_sql', {
-      sql: `LISTEN ${channel}`
-    });
+    // Try to setup LISTEN (optional - will fall back to polling)
+    try {
+      const { error } = await this.db.rpc('exec_sql', {
+        sql: `LISTEN ${channel}`
+      });
 
-    if (error) {
-      logger.error({ error }, 'Failed to setup listener');
-      throw error;
+      if (error) {
+        logger.warn({ error }, 'LISTEN not available, using polling only');
+      } else {
+        logger.info('LISTEN channel established');
+      }
+    } catch (error) {
+      logger.warn({ error }, 'LISTEN setup failed, using polling only');
     }
 
-    // Poll for notifications (Supabase doesn't expose NOTIFY directly)
+    // Poll for notifications (primary mechanism for Supabase)
     setInterval(() => this.checkForJobs(), 5000);
   }
 

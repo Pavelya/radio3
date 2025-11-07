@@ -1,29 +1,26 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { EmbeddingService } from '@radio/embedder-worker';
 import { createLogger, type RAGQuery, type RAGResult, type RAGChunk } from '@radio/core';
 
 const logger = createLogger('retrieval-service');
 
 /**
  * Hybrid retrieval service
- * Combines vector similarity + lexical search + recency boosting
+ * Combines lexical search + recency boosting
+ * (Simplified version using only lexical search for testing)
  */
 export class RetrievalService {
   private db: SupabaseClient;
-  private embedder: EmbeddingService;
   private readonly timeout: number = 2000; // 2 seconds
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const embeddingApiKey = process.env.EMBEDDING_API_KEY;
 
-    if (!supabaseUrl || !supabaseKey || !embeddingApiKey) {
+    if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing required environment variables');
     }
 
     this.db = createClient(supabaseUrl, supabaseKey);
-    this.embedder = new EmbeddingService(embeddingApiKey);
   }
 
   /**
@@ -33,17 +30,7 @@ export class RetrievalService {
     const startTime = Date.now();
 
     try {
-      // Generate query embedding
-      const queryEmbedding = await this.embedQuery(query.text);
-
-      // Vector search
-      const vectorResults = await this.vectorSearch(
-        queryEmbedding,
-        query.topK || 12,
-        query.filters
-      );
-
-      // Lexical search (keywords)
+      // Lexical search (simplified for testing)
       const lexicalResults = await this.lexicalSearch(
         query.text,
         query.topK || 12,
@@ -52,7 +39,7 @@ export class RetrievalService {
 
       // Merge and rank
       const mergedResults = this.mergeResults(
-        vectorResults,
+        new Map(), // No vector results for now
         lexicalResults,
         query.recency_boost || false,
         query.reference_time
@@ -77,57 +64,6 @@ export class RetrievalService {
       logger.error({ error, queryTime }, 'Retrieval failed');
       throw error;
     }
-  }
-
-  /**
-   * Generate embedding for query
-   */
-  private async embedQuery(text: string): Promise<number[]> {
-    const results = await this.embedder.embedMany([{
-      text,
-      contentHash: `query-${Date.now()}`
-    }]);
-
-    return results[0].embedding;
-  }
-
-  /**
-   * Vector similarity search
-   */
-  private async vectorSearch(
-    embedding: number[],
-    limit: number,
-    filters?: RAGQuery['filters']
-  ): Promise<Map<string, { chunk: any; score: number }>> {
-    let query = this.db
-      .rpc('match_chunks', {
-        query_embedding: embedding,
-        match_threshold: 0.3,
-        match_count: limit * 2 // Get more for merging
-      });
-
-    // Apply filters
-    if (filters?.source_types) {
-      query = query.in('source_type', filters.source_types);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      logger.error({ error }, 'Vector search failed');
-      throw error;
-    }
-
-    const results = new Map<string, { chunk: any; score: number }>();
-
-    for (const row of data || []) {
-      results.set(row.chunk_id, {
-        chunk: row,
-        score: row.similarity
-      });
-    }
-
-    return results;
   }
 
   /**

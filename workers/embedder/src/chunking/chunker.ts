@@ -19,7 +19,7 @@ export class Chunker {
     this.cleaner = new MarkdownCleaner();
     this.detector = new LanguageDetector();
     this.config = {
-      minTokens: config?.minTokens ?? 300,
+      minTokens: config?.minTokens ?? 100,
       maxTokens: config?.maxTokens ?? 800,
       overlapTokens: config?.overlapTokens ?? 50
     };
