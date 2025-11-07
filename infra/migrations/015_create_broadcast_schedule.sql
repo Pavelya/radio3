@@ -25,10 +25,10 @@ CREATE TABLE broadcast_schedule (
 
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 
-  -- Validation: end_time must be after start_time
-  CHECK (end_time > start_time)
+  -- Note: No CHECK constraint for end_time > start_time to allow midnight-crossing slots
+  -- Conflicts are handled by check_schedule_conflicts() function
 );
 
 -- Indexes
