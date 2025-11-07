@@ -93,6 +93,23 @@ end
 # Apply metadata handler
 source = map_metadata(on_track_metadata, playlist_source)
 
+# Function to mark segment as complete
+def on_track_end(m) =
+  segment_id = !current_segment_id
+
+  if segment_id != "" then
+    log("Marking segment complete: #{segment_id}")
+
+    cmd = "curl -s -X POST #{api_url}/playout/segment-complete/#{segment_id}"
+    result = process.run(cmd)
+
+    log("Complete result: #{result}")
+  end
+end
+
+# Apply on_stop handler (called when track ends)
+source = on_stop(on_track_end, source)
+
 # Add blank detection (fallback to silence if no tracks)
 source = mksafe(source)
 
