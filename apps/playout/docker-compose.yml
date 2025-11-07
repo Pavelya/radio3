@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  liquidsoap:
+    build: .
+    container_name: radio-liquidsoap
+    environment:
+      # Use host.docker.internal to access API running on host machine
+      - API_URL=http://host.docker.internal:8000
+      - OUTPUT_DIR=/radio/audio
+      - ICECAST_HOST=icecast
+      - ICECAST_PORT=8000
+      - ICECAST_PASSWORD=hackme
+    volumes:
+      - ./audio:/radio/audio
+      - ./logs:/var/log/liquidsoap
+    depends_on:
+      - icecast
+    restart: unless-stopped
+    networks:
+      - radio-network
+    # Enable host.docker.internal on Linux
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  icecast:
+    image: moul/icecast:2.4.4
+    container_name: radio-icecast
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=admin
+      - ICECAST_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    ports:
+      # Changed from 8000 to 8001 to avoid conflict with API
+      - "8001:8000"
+    volumes:
+      - ./icecast.xml:/etc/icecast2/icecast.xml:ro
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+networks:
+  radio-network:
+    driver: bridge

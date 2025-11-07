@@ -11775,10 +11775,10 @@ docker-compose up -d
 docker-compose logs -f liquidsoap
 
 # Test stream
-ffplay http://localhost:8000/radio.opus
+ffplay http://localhost:8001/radio.opus
 
 # Check Icecast status
-curl http://localhost:8000/status.xsl
+curl http://localhost:8001/status.xsl
 
 # Verify fetch script works
 docker-compose exec liquidsoap bash /radio/fetch-next.sh
@@ -12704,9 +12704,9 @@ pnpm start
 
 # Task P4: Liquidsoap - Dead Air Detection
 
-**Tier:** Playout  
-**Estimated Time:** 45 minutes  
-**Complexity:** Low  
+**Tier:** Playout
+**Estimated Time:** 45 minutes
+**Complexity:** Low
 **Prerequisites:** P1, P3 complete
 
 ---
@@ -12724,6 +12724,11 @@ Dead air detection:
 - Switch to emergency playlist
 - Log alert
 - Return to normal when content available
+
+**Docker Configuration (from P1):**
+- Icecast accessible at `http://localhost:8001` (port 8001, not 8000)
+- API accessible from Docker at `http://host.docker.internal:8000`
+- Emergency volume mounted at `/radio/emergency` in container
 
 ---
 
@@ -12902,7 +12907,7 @@ Create `apps/playout/monitor-stream.sh`:
 #!/bin/bash
 # Monitor stream for dead air
 
-STREAM_URL="${STREAM_URL:-http://localhost:8000/radio.opus}"
+STREAM_URL="${STREAM_URL:-http://localhost:8001/radio.opus}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-30}"
 
 echo "Monitoring stream: $STREAM_URL"
@@ -12923,28 +12928,48 @@ done
 
 ### Step 5: Update Docker Compose
 
-Update `apps/playout/docker-compose.yml`:
+Update `apps/playout/docker-compose.yml` to add emergency volume:
 ```yaml
 services:
   liquidsoap:
     build: .
     container_name: radio-liquidsoap
     environment:
-      - API_URL=http://api:8000
+      # Use host.docker.internal to reach API on host
+      - API_URL=http://host.docker.internal:8000
       - OUTPUT_DIR=/radio/audio
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
       - ICECAST_PASSWORD=hackme
     volumes:
       - ./audio:/radio/audio
-      - ./emergency:/radio/emergency:ro  # ADD THIS
+      - ./emergency:/radio/emergency:ro  # ADD THIS LINE
       - ./logs:/var/log/liquidsoap
     depends_on:
       - icecast
     restart: unless-stopped
     networks:
       - radio-network
-  
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  icecast:
+    image: moul/icecast:2.4.4
+    container_name: radio-icecast
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=admin
+      - ICECAST_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    ports:
+      # Exposed on port 8001 to avoid conflict with API (port 8000)
+      - "8001:8000"
+    volumes:
+      - ./icecast.xml:/etc/icecast2/icecast.xml:ro
+    restart: unless-stopped
+    networks:
+      - radio-network
+
   # Add monitoring container
   monitor:
     image: curlimages/curl:latest
@@ -12955,6 +12980,8 @@ services:
     networks:
       - radio-network
 ```
+
+**Note:** Monitor container accesses Icecast on internal port 8000. From host, use port 8001.
 
 ---
 
@@ -12976,7 +13003,7 @@ services:
 
 ### Manual Verification
 ```bash
-# Generate fallback audio
+# Generate fallback audio (run on HOST)
 cd apps/playout/emergency
 bash generate-fallback.sh
 
@@ -12991,8 +13018,14 @@ docker-compose logs -f liquidsoap
 # Should see: "ALERT: Dead air detected!"
 # Stream should continue with emergency content
 
-# Monitor stream health
+# Monitor stream health from HOST (uses port 8001)
 bash monitor-stream.sh
+
+# Test stream manually
+ffplay http://localhost:8001/radio.opus
+
+# Check Icecast status page
+open http://localhost:8001/status.xsl
 ```
 
 ---
@@ -13024,9 +13057,9 @@ bash monitor-stream.sh
 
 # Task P6: Schedule Visualization & Analytics
 
-**Tier:** Playout  
-**Estimated Time:** 1 hour  
-**Complexity:** Low  
+**Tier:** Playout
+**Estimated Time:** 1 hour
+**Complexity:** Low
 **Prerequisites:** P5 complete
 
 ---
@@ -13034,6 +13067,13 @@ bash monitor-stream.sh
 ## Objective
 
 Create schedule visualization in admin: calendar view, timeline view, analytics on what aired vs what was scheduled.
+
+---
+
+**Docker Configuration (from P1):**
+- Stream accessible at `http://localhost:8001/radio.opus` (port 8001, not 8000)
+- MP3 stream at `http://localhost:8001/radio.mp3`
+- If adding live stream preview to admin, use port 8001
 
 ---
 
@@ -13356,6 +13396,61 @@ Update `apps/admin/app/dashboard/layout.tsx`:
 </Link>
 ```
 
+### Step 5 (Optional): Add Live Stream Preview
+
+Create `apps/admin/components/StreamPlayer.tsx`:
+```typescript
+'use client';
+
+import { useState, useRef } from 'react';
+
+export function StreamPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Use port 8001 for Icecast stream (Docker configuration)
+  const streamUrl = 'http://localhost:8001/radio.opus';
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="bg-white p-4 rounded shadow">
+      <h3 className="text-sm font-semibold mb-2">Live Stream Preview</h3>
+      <audio ref={audioRef} src={streamUrl} />
+      <button
+        onClick={togglePlay}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        {isPlaying ? '⏸ Pause' : '▶ Play Live'}
+      </button>
+      <p className="text-xs text-gray-500 mt-2">
+        Stream: {streamUrl}
+      </p>
+    </div>
+  );
+}
+```
+
+Then add to schedule page:
+```typescript
+import { StreamPlayer } from '@/components/StreamPlayer';
+
+// In the page component, add above the timeline:
+<StreamPlayer />
+```
+
+**Note:** Stream uses port **8001** (not 8000) due to Docker port mapping.
+
 ---
 
 ## Acceptance Criteria
@@ -13387,6 +13482,9 @@ open http://localhost:3001/dashboard/schedule
 open http://localhost:3001/dashboard/analytics
 
 # Check stats are accurate
+
+# If Stream Player added: test live stream preview
+# Click play button and verify audio plays from http://localhost:8001/radio.opus
 ```
 
 ---
@@ -13703,7 +13801,7 @@ import AudioPlayer from '@/components/audio-player';
 import NowPlaying from '@/components/now-playing';
 
 export default function HomePage() {
-  const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8000/radio.mp3';
+  const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8001/radio.mp3';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-black">
@@ -13788,7 +13886,7 @@ export default function HomePage() {
 
 Create `apps/web/.env.local`:
 ```bash
-NEXT_PUBLIC_STREAM_URL=http://localhost:8000/radio.mp3
+NEXT_PUBLIC_STREAM_URL=http://localhost:8001/radio.mp3
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
@@ -14294,7 +14392,7 @@ export default function HomePage() {
 
 Update `apps/web/.env.local`:
 ```bash
-NEXT_PUBLIC_STREAM_URL=http://localhost:8000/radio.mp3
+NEXT_PUBLIC_STREAM_URL=http://localhost:8001/radio.mp3
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
@@ -25350,9 +25448,9 @@ pnpm start
 
 # Task P4: Liquidsoap - Dead Air Detection
 
-**Tier:** Playout  
-**Estimated Time:** 45 minutes  
-**Complexity:** Low  
+**Tier:** Playout
+**Estimated Time:** 45 minutes
+**Complexity:** Low
 **Prerequisites:** P1, P3 complete
 
 ---
@@ -25370,6 +25468,11 @@ Dead air detection:
 - Switch to emergency playlist
 - Log alert
 - Return to normal when content available
+
+**Docker Configuration (from P1):**
+- Icecast accessible at `http://localhost:8001` (port 8001, not 8000)
+- API accessible from Docker at `http://host.docker.internal:8000`
+- Emergency volume mounted at `/radio/emergency` in container
 
 ---
 
@@ -25548,7 +25651,7 @@ Create `apps/playout/monitor-stream.sh`:
 #!/bin/bash
 # Monitor stream for dead air
 
-STREAM_URL="${STREAM_URL:-http://localhost:8000/radio.opus}"
+STREAM_URL="${STREAM_URL:-http://localhost:8001/radio.opus}"
 CHECK_INTERVAL="${CHECK_INTERVAL:-30}"
 
 echo "Monitoring stream: $STREAM_URL"
@@ -25569,28 +25672,48 @@ done
 
 ### Step 5: Update Docker Compose
 
-Update `apps/playout/docker-compose.yml`:
+Update `apps/playout/docker-compose.yml` to add emergency volume:
 ```yaml
 services:
   liquidsoap:
     build: .
     container_name: radio-liquidsoap
     environment:
-      - API_URL=http://api:8000
+      # Use host.docker.internal to reach API on host
+      - API_URL=http://host.docker.internal:8000
       - OUTPUT_DIR=/radio/audio
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8000
       - ICECAST_PASSWORD=hackme
     volumes:
       - ./audio:/radio/audio
-      - ./emergency:/radio/emergency:ro  # ADD THIS
+      - ./emergency:/radio/emergency:ro  # ADD THIS LINE
       - ./logs:/var/log/liquidsoap
     depends_on:
       - icecast
     restart: unless-stopped
     networks:
       - radio-network
-  
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  icecast:
+    image: moul/icecast:2.4.4
+    container_name: radio-icecast
+    environment:
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_ADMIN_PASSWORD=admin
+      - ICECAST_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+    ports:
+      # Exposed on port 8001 to avoid conflict with API (port 8000)
+      - "8001:8000"
+    volumes:
+      - ./icecast.xml:/etc/icecast2/icecast.xml:ro
+    restart: unless-stopped
+    networks:
+      - radio-network
+
   # Add monitoring container
   monitor:
     image: curlimages/curl:latest
@@ -25601,6 +25724,8 @@ services:
     networks:
       - radio-network
 ```
+
+**Note:** Monitor container accesses Icecast on internal port 8000. From host, use port 8001.
 
 ---
 
@@ -25622,7 +25747,7 @@ services:
 
 ### Manual Verification
 ```bash
-# Generate fallback audio
+# Generate fallback audio (run on HOST)
 cd apps/playout/emergency
 bash generate-fallback.sh
 
@@ -25637,8 +25762,14 @@ docker-compose logs -f liquidsoap
 # Should see: "ALERT: Dead air detected!"
 # Stream should continue with emergency content
 
-# Monitor stream health
+# Monitor stream health from HOST (uses port 8001)
 bash monitor-stream.sh
+
+# Test stream manually
+ffplay http://localhost:8001/radio.opus
+
+# Check Icecast status page
+open http://localhost:8001/status.xsl
 ```
 
 ---
@@ -26031,9 +26162,9 @@ docker-compose -f apps/playout/docker-compose.yml logs -f liquidsoap
 
 # Task P6: Schedule Visualization & Analytics
 
-**Tier:** Playout  
-**Estimated Time:** 1 hour  
-**Complexity:** Low  
+**Tier:** Playout
+**Estimated Time:** 1 hour
+**Complexity:** Low
 **Prerequisites:** P5 complete
 
 ---
@@ -26041,6 +26172,13 @@ docker-compose -f apps/playout/docker-compose.yml logs -f liquidsoap
 ## Objective
 
 Create schedule visualization in admin: calendar view, timeline view, analytics on what aired vs what was scheduled.
+
+---
+
+**Docker Configuration (from P1):**
+- Stream accessible at `http://localhost:8001/radio.opus` (port 8001, not 8000)
+- MP3 stream at `http://localhost:8001/radio.mp3`
+- If adding live stream preview to admin, use port 8001
 
 ---
 
@@ -26363,6 +26501,61 @@ Update `apps/admin/app/dashboard/layout.tsx`:
 </Link>
 ```
 
+### Step 5 (Optional): Add Live Stream Preview
+
+Create `apps/admin/components/StreamPlayer.tsx`:
+```typescript
+'use client';
+
+import { useState, useRef } from 'react';
+
+export function StreamPlayer() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Use port 8001 for Icecast stream (Docker configuration)
+  const streamUrl = 'http://localhost:8001/radio.opus';
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="bg-white p-4 rounded shadow">
+      <h3 className="text-sm font-semibold mb-2">Live Stream Preview</h3>
+      <audio ref={audioRef} src={streamUrl} />
+      <button
+        onClick={togglePlay}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        {isPlaying ? '⏸ Pause' : '▶ Play Live'}
+      </button>
+      <p className="text-xs text-gray-500 mt-2">
+        Stream: {streamUrl}
+      </p>
+    </div>
+  );
+}
+```
+
+Then add to schedule page:
+```typescript
+import { StreamPlayer } from '@/components/StreamPlayer';
+
+// In the page component, add above the timeline:
+<StreamPlayer />
+```
+
+**Note:** Stream uses port **8001** (not 8000) due to Docker port mapping.
+
 ---
 
 ## Acceptance Criteria
@@ -26394,6 +26587,9 @@ open http://localhost:3001/dashboard/schedule
 open http://localhost:3001/dashboard/analytics
 
 # Check stats are accurate
+
+# If Stream Player added: test live stream preview
+# Click play button and verify audio plays from http://localhost:8001/radio.opus
 ```
 
 ---
@@ -28565,7 +28761,7 @@ echo "🌐 Access points:"
 echo "   API:      http://localhost:8000"
 echo "   Web:      http://localhost:3000"
 echo "   Admin:    http://localhost:3001"
-echo "   Stream:   http://localhost:8000/radio.mp3"
+echo "   Stream:   http://localhost:8001/radio.mp3"
 echo "   Icecast:  http://localhost:8000"
 echo ""
 ````
@@ -29472,7 +29668,7 @@ sudo -u radio env | grep SUPABASE
 sudo systemctl status radio-liquidsoap
 
 # Test Icecast
-curl http://localhost:8000/status.xsl
+curl http://localhost:8001/status.xsl
 
 # Check audio files
 ls -lh /opt/ai-radio-2525/apps/playout/audio/
@@ -29543,7 +29739,7 @@ sudo systemctl restart radio-api
 - **API**: http://localhost:8000
 - **Web**: http://localhost:3000
 - **Admin**: http://localhost:3001
-- **Stream**: http://localhost:8000/radio.mp3
+- **Stream**: http://localhost:8001/radio.mp3
 - **Icecast**: http://localhost:8000
 - **Grafana**: http://localhost:3002
 ````
@@ -29642,7 +29838,7 @@ curl http://localhost:3000
 curl http://localhost:3001
 
 # Test stream
-ffplay http://localhost:8000/radio.mp3
+ffplay http://localhost:8001/radio.mp3
 
 # Verify logs
 sudo journalctl -u radio-api -n 20
