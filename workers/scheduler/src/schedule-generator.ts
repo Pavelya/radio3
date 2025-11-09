@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { addHours, addMinutes, startOfDay, addDays, format } from 'date-fns';
+import { addHours, addMinutes, startOfDay, addDays, format, getDay } from 'date-fns';
 import { createLogger } from '@radio/core';
 
 const logger = createLogger('schedule-generator');
@@ -26,6 +26,15 @@ interface ProgramWithFormatClock {
   dj_id: string;
   format_clock_id: string;
   format_clocks: FormatClock[] | FormatClock | null;
+}
+
+interface BroadcastSchedule {
+  id: string;
+  program_id: string;
+  day_of_week: number | null;
+  start_time: string;
+  end_time: string;
+  priority: number;
 }
 
 /**
@@ -70,44 +79,75 @@ export class ScheduleGenerator {
         return;
       }
 
-      // For now, use first program for entire day
-      // TODO: Support multiple programs per day
-      const program = programs[0] as ProgramWithFormatClock;
-
-      // Fetch format slots for this format clock
-      const { data: formatSlots, error: slotsError } = await this.db
-        .from('format_slots')
+      // Fetch broadcast schedule
+      const { data: broadcastSchedule, error: scheduleError } = await this.db
+        .from('broadcast_schedule')
         .select('*')
-        .eq('format_clock_id', program.format_clock_id)
-        .order('order_index', { ascending: true });
+        .eq('active', true)
+        .order('priority', { ascending: false });
 
-      if (slotsError) throw slotsError;
+      if (scheduleError) throw scheduleError;
 
-      if (!formatSlots || formatSlots.length === 0) {
-        logger.warn({ formatClockId: program.format_clock_id }, 'No format slots found for format clock');
-        return;
-      }
-
-      // Get format clock name (handle array case from Supabase)
-      const formatClockName = Array.isArray(program.format_clocks)
-        ? program.format_clocks[0]?.name
-        : program.format_clocks?.name;
+      // Get day of week (0 = Sunday, 6 = Saturday)
+      const dayOfWeek = getDay(date);
 
       logger.info({
-        program: program.name,
-        formatClock: formatClockName,
-        slots: formatSlots.length
-      }, 'Using program');
+        dayOfWeek,
+        schedules: broadcastSchedule?.length || 0
+      }, 'Broadcast schedule loaded');
 
       // Generate segments for each hour of the day
       const segmentsToCreate = [];
-      let currentMinute = 0;
+      const programsMap = new Map<string, ProgramWithFormatClock>();
+      const formatSlotsCache = new Map<string, FormatSlot[]>();
+
+      // Build programs map for quick lookup
+      for (const prog of programs as ProgramWithFormatClock[]) {
+        programsMap.set(prog.id, prog);
+      }
 
       for (let hour = 0; hour < 24; hour++) {
         const hourStart = addHours(startOfDay(date), hour);
 
-        // Reset minute counter for each hour
-        currentMinute = 0;
+        // Determine which program should air during this hour
+        const program = this.getProgramForHour(
+          hour,
+          dayOfWeek,
+          broadcastSchedule as BroadcastSchedule[] || [],
+          programs as ProgramWithFormatClock[]
+        );
+
+        if (!program) {
+          logger.warn({ hour }, 'No program found for hour, skipping');
+          continue;
+        }
+
+        // Fetch format slots for this program's format clock (with caching)
+        let formatSlots = formatSlotsCache.get(program.format_clock_id);
+
+        if (!formatSlots) {
+          const { data: slots, error: slotsError } = await this.db
+            .from('format_slots')
+            .select('*')
+            .eq('format_clock_id', program.format_clock_id)
+            .order('order_index', { ascending: true });
+
+          if (slotsError) {
+            logger.error({ error: slotsError, formatClockId: program.format_clock_id }, 'Failed to fetch format slots');
+            continue;
+          }
+
+          if (!slots || slots.length === 0) {
+            logger.warn({ formatClockId: program.format_clock_id }, 'No format slots found for format clock');
+            continue;
+          }
+
+          formatSlots = slots as FormatSlot[];
+          formatSlotsCache.set(program.format_clock_id, formatSlots);
+        }
+
+        // Generate segments for this hour
+        let currentMinute = 0;
 
         for (const slot of formatSlots) {
           const slotStart = addMinutes(hourStart, currentMinute);
@@ -189,6 +229,50 @@ export class ScheduleGenerator {
       logger.error({ error, segmentId }, 'Failed to enqueue generation job');
       throw error;
     }
+  }
+
+  /**
+   * Determine which program should air during a specific hour
+   * Based on broadcast schedule configuration
+   */
+  private getProgramForHour(
+    hour: number,
+    dayOfWeek: number,
+    broadcastSchedule: BroadcastSchedule[],
+    programs: ProgramWithFormatClock[]
+  ): ProgramWithFormatClock | null {
+    // Convert hour to time string (HH:00:00)
+    const hourTime = `${hour.toString().padStart(2, '0')}:00:00`;
+
+    // Find matching broadcast schedule entry (highest priority wins)
+    const matchingSchedule = broadcastSchedule.find(schedule => {
+      // Check if day matches (NULL = every day)
+      const dayMatches = schedule.day_of_week === null || schedule.day_of_week === dayOfWeek;
+
+      if (!dayMatches) return false;
+
+      // Check if hour falls within time range
+      const startHour = parseInt(schedule.start_time.split(':')[0]);
+      const endHour = parseInt(schedule.end_time.split(':')[0]);
+
+      // Handle midnight-crossing schedules (e.g., 22:00 - 02:00)
+      if (endHour <= startHour) {
+        // Crosses midnight
+        return hour >= startHour || hour < endHour;
+      } else {
+        // Normal range
+        return hour >= startHour && hour < endHour;
+      }
+    });
+
+    if (matchingSchedule) {
+      // Find the program for this schedule entry
+      return programs.find(p => p.id === matchingSchedule.program_id) || null;
+    }
+
+    // No matching schedule - use first active program as fallback
+    logger.debug({ hour }, 'No broadcast schedule match, using fallback program');
+    return programs[0] || null;
   }
 
   /**

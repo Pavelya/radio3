@@ -66,19 +66,24 @@ router.get('/next', async (req, res) => {
       // Generate signed URL (1 hour expiry)
       const storage_path = asset.storage_path;
 
-      // Prefer final audio if available, otherwise use raw
+      // Storage path logic:
+      // - Raw audio: {storage_path} (created by segment-gen worker)
+      // - Normalized audio: final/{asset_id}.wav (created by mastering worker)
+      // - We prefer the normalized version for broadcast quality
       const final_path = `final/${asset.id}.wav`;
 
       let audio_url: string;
 
       try {
-        // Try final path first
+        // Try final (normalized) path first
         const { data: finalSignedUrl, error: finalError } = await db.storage
           .from('audio-assets')
           .createSignedUrl(final_path, 3600);
 
         if (finalError || !finalSignedUrl) {
-          // Fallback to storage_path
+          // Fallback to raw audio if mastering not complete or failed
+          logger.debug({ assetId: asset.id }, 'Final audio not found, using raw audio');
+
           const { data: rawSignedUrl, error: rawError } = await db.storage
             .from('audio-assets')
             .createSignedUrl(storage_path, 3600);

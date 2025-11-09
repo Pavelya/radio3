@@ -130,6 +130,8 @@ async function seed() {
       fs.readFileSync(path.join(__dirname, 'seed-data/universe-docs.json'), 'utf8')
     );
 
+    const universeDocIds = [];
+
     for (const doc of universeDocsData) {
       // Check if document with this title already exists
       const { data: existing } = await supabase
@@ -149,16 +151,40 @@ async function seed() {
           logger.error({ doc: doc.title, error: error.message }, 'Error updating doc');
         } else {
           logger.info({ doc: doc.title }, 'Updated lore doc');
+          universeDocIds.push(existing.id);
         }
       } else {
         // Insert new document
-        const { error } = await supabase.from('universe_docs').insert(doc);
+        const { data: inserted, error } = await supabase
+          .from('universe_docs')
+          .insert(doc)
+          .select('id')
+          .single();
 
         if (error) {
           logger.error({ doc: doc.title, error: error.message }, 'Error inserting doc');
         } else {
           logger.info({ doc: doc.title }, 'Created lore doc');
+          if (inserted) universeDocIds.push(inserted.id);
         }
+      }
+    }
+
+    // Enqueue embedding jobs for universe docs
+    logger.info({ count: universeDocIds.length }, 'Enqueuing embedding jobs for universe docs');
+    for (const docId of universeDocIds) {
+      const { error } = await supabase.rpc('enqueue_job', {
+        p_job_type: 'kb_index',
+        p_payload: {
+          source_table: 'universe_docs',
+          source_id: docId
+        },
+        p_priority: 3,
+        p_schedule_delay_sec: 0
+      });
+
+      if (error) {
+        logger.error({ docId, error: error.message }, 'Failed to enqueue embedding job');
       }
     }
 
@@ -167,6 +193,8 @@ async function seed() {
     const eventsData = JSON.parse(
       fs.readFileSync(path.join(__dirname, 'seed-data/events.json'), 'utf8')
     );
+
+    const eventIds = [];
 
     for (const event of eventsData) {
       // Check if event with this title already exists
@@ -187,16 +215,40 @@ async function seed() {
           logger.error({ event: event.title, error: error.message }, 'Error updating event');
         } else {
           logger.info({ event: event.title }, 'Updated event');
+          eventIds.push(existing.id);
         }
       } else {
         // Insert new event
-        const { error } = await supabase.from('events').insert(event);
+        const { data: inserted, error } = await supabase
+          .from('events')
+          .insert(event)
+          .select('id')
+          .single();
 
         if (error) {
           logger.error({ event: event.title, error: error.message }, 'Error inserting event');
         } else {
           logger.info({ event: event.title }, 'Created event');
+          if (inserted) eventIds.push(inserted.id);
         }
+      }
+    }
+
+    // Enqueue embedding jobs for events
+    logger.info({ count: eventIds.length }, 'Enqueuing embedding jobs for events');
+    for (const eventId of eventIds) {
+      const { error } = await supabase.rpc('enqueue_job', {
+        p_job_type: 'kb_index',
+        p_payload: {
+          source_table: 'events',
+          source_id: eventId
+        },
+        p_priority: 3,
+        p_schedule_delay_sec: 0
+      });
+
+      if (error) {
+        logger.error({ eventId, error: error.message }, 'Failed to enqueue embedding job');
       }
     }
 
@@ -205,8 +257,12 @@ async function seed() {
       djs: djsData.length,
       programs: programsData.length,
       universeDocs: universeDocsData.length,
-      events: eventsData.length
+      universeDocsEmbeddingJobs: universeDocIds.length,
+      events: eventsData.length,
+      eventsEmbeddingJobs: eventIds.length
     }, 'Database seeding completed successfully');
+
+    logger.info('Note: Embeddings will be generated asynchronously by the embedder worker');
 
   } catch (error) {
     logger.error({ error: error.message }, 'Seeding failed');

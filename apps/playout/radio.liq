@@ -5,8 +5,8 @@
 #
 # Docker networking notes:
 # - API_URL: Set to host.docker.internal:8000 to reach API on host machine
-# - Icecast: Accessed via service name "icecast" on internal port 8000
-#   (exposed to host as port 8001 to avoid conflict with API)
+# - Icecast: Accessed via service name "icecast" on port 8001
+#   (same port for both Docker and native to avoid conflict with API on 8000)
 
 # Configuration
 settings.log.level := 4
@@ -24,7 +24,7 @@ icecast_password = getenv("ICECAST_PASSWORD")
 api_url := if api_url == "" then "http://localhost:8000" else api_url end
 audio_dir := if audio_dir == "" then "/radio/audio" else audio_dir end
 icecast_host := if icecast_host == "" then "localhost" else icecast_host end
-icecast_port := if icecast_port == "" then "8000" else icecast_port end
+icecast_port := if icecast_port == "" then "8001" else icecast_port end
 icecast_password := if icecast_password == "" then "hackme" else icecast_password end
 
 # Log configuration

@@ -66,22 +66,41 @@ export class RAGClient {
 
   /**
    * Build query from segment requirements
+   * Creates time-aware, context-specific queries
    */
   buildQuery(segment: any, referenceTime: string): RAGQuery {
-    // Build query based on slot type
+    // Parse reference time for context
+    const refDate = new Date(referenceTime);
+    const year = refDate.getFullYear();
+    const month = refDate.toLocaleDateString('en-US', { month: 'long' });
+    const day = refDate.getDate();
+
+    // Build time-aware queries based on slot type
     const queries: Record<string, string> = {
-      'news': 'recent events and news developments',
-      'culture': 'cultural trends and artistic movements',
-      'tech': 'technological advancements and innovations',
-      'history': 'historical context and past events',
-      'interview': 'notable figures and their perspectives',
-      'station_id': 'station information and programming'
+      'news': `What significant events, news developments, and current affairs are happening around ${month} ${day}, ${year}? What are the major stories and breaking news that listeners should know about today?`,
+
+      'culture': `What cultural trends, artistic movements, entertainment, and creative works are prominent in ${month} ${year}? What are people talking about in arts, music, literature, and popular culture?`,
+
+      'tech': `What technological advancements, innovations, and scientific breakthroughs are happening around ${month} ${year}? What new technologies are shaping society and daily life?`,
+
+      'history': `What historical events and context are relevant around ${month} ${day}? What significant moments from the past are worth remembering today? What led us to where we are in ${year}?`,
+
+      'interview': `Who are the notable figures, influential people, and interesting personalities active around ${month} ${year}? What are their views, achievements, and perspectives?`,
+
+      'station_id': `What is the mission, programming, and identity of this radio station? What makes it unique and what does it offer to listeners in ${year}?`
     };
 
-    const baseQuery = queries[segment.slot_type] || 'general information';
+    const queryText = queries[segment.slot_type] ||
+      `What general information, context, and interesting facts are relevant around ${month} ${day}, ${year}?`;
+
+    logger.debug({
+      slotType: segment.slot_type,
+      referenceTime,
+      year
+    }, 'Built time-aware RAG query');
 
     return {
-      text: baseQuery,
+      text: queryText,
       topK: 12,
       recency_boost: segment.slot_type === 'news',
       reference_time: referenceTime

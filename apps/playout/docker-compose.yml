@@ -9,7 +9,7 @@ services:
       - API_URL=http://host.docker.internal:8000
       - OUTPUT_DIR=/radio/audio
       - ICECAST_HOST=icecast
-      - ICECAST_PORT=8000
+      - ICECAST_PORT=8001
       - ICECAST_PASSWORD=hackme
     volumes:
       - ./audio:/radio/audio
@@ -32,8 +32,8 @@ services:
       - ICECAST_PASSWORD=hackme
       - ICECAST_RELAY_PASSWORD=hackme
     ports:
-      # Changed from 8000 to 8001 to avoid conflict with API
-      - "8001:8000"
+      # Port 8001 (avoids conflict with API server on 8000)
+      - "8001:8001"
     volumes:
       - ./icecast.xml:/etc/icecast2/icecast.xml:ro
     restart: unless-stopped

@@ -2,9 +2,11 @@
   <!--
     AI Radio 2525 - Icecast Configuration
 
-    Port mapping: Container listens on 8000, exposed to host as 8001
-    This avoids conflict with API server (port 8000)
+    Icecast runs on port 8001 (both Docker and native installs)
+    This avoids conflict with API server which runs on port 8000
+
     Access stream at: http://localhost:8001/radio.opus
+    Access admin at: http://localhost:8001/admin/
   -->
 
   <location>Earth</location>
@@ -31,8 +33,8 @@
   <hostname>localhost</hostname>
 
   <listen-socket>
-    <!-- Internal container port (mapped to 8001 on host) -->
-    <port>8000</port>
+    <!-- Port 8001 (avoids conflict with API server on 8000) -->
+    <port>8001</port>
   </listen-socket>
 
   <fileserve>1</fileserve>
