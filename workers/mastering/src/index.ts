@@ -2,6 +2,10 @@ import { BaseWorker } from '../../embedder/src/worker/base-worker';
 import { MasteringHandler } from './worker/mastering-handler';
 import { createLogger } from '@radio/core';
 import * as os from 'os';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 const logger = createLogger('mastering-main');
 

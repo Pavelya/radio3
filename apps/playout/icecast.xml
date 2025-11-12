@@ -41,7 +41,7 @@
 
   <paths>
     <basedir>/usr/share/icecast2</basedir>
-    <logdir>/var/log/icecast2</logdir>
+    <logdir>/tmp</logdir>
     <webroot>/usr/share/icecast2/web</webroot>
     <adminroot>/usr/share/icecast2/admin</adminroot>
     <alias source="/" destination="/status.xsl"/>
@@ -56,5 +56,9 @@
 
   <security>
     <chroot>0</chroot>
+    <changeowner>
+      <user>icecast</user>
+      <group>icecast</group>
+    </changeowner>
   </security>
 </icecast>

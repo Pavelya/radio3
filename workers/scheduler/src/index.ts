@@ -1,6 +1,10 @@
 import { ScheduleGenerator } from './schedule-generator';
 import { createLogger } from '@radio/core';
 import { addDays } from 'date-fns';
+import { config } from 'dotenv';
+
+// Load environment variables
+config();
 
 const logger = createLogger('scheduler-main');
 

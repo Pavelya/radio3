@@ -43,7 +43,7 @@ router.get('/next', async (req, res) => {
     // Fetch ready segments
     const { data: segments, error } = await db
       .from('segments')
-      .select('*, assets(*), programs(name), djs(name)')
+      .select('*, assets(*), programs(name, djs(name))')
       .eq('state', 'ready')
       .order('scheduled_start_ts', { ascending: true })
       .limit(limit);
@@ -109,7 +109,7 @@ router.get('/next', async (req, res) => {
         audio_url,
         duration_sec: row.duration_sec || 0,
         slot_type: row.slot_type,
-        dj_name: row.djs?.name
+        dj_name: row.programs?.djs?.name
       };
 
       playoutSegments.push(segment);

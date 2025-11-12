@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  piper-tts:
+    build: ./workers/piper-tts
+    container_name: radio-piper-tts
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./cache/tts:/app/cache
+    environment:
+      - CACHE_DIR=/app/cache
+      - PORT=5002
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

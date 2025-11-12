@@ -176,7 +176,7 @@ async function seed() {
       const { error } = await supabase.rpc('enqueue_job', {
         p_job_type: 'kb_index',
         p_payload: {
-          source_table: 'universe_docs',
+          source_type: 'universe_doc',
           source_id: docId
         },
         p_priority: 3,
@@ -240,7 +240,7 @@ async function seed() {
       const { error } = await supabase.rpc('enqueue_job', {
         p_job_type: 'kb_index',
         p_payload: {
-          source_table: 'events',
+          source_type: 'event',
           source_id: eventId
         },
         p_priority: 3,

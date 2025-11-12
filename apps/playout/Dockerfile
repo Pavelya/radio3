@@ -1,5 +1,8 @@
 FROM savonet/liquidsoap:v2.2.3
 
+# Switch to root for package installation
+USER root
+
 # Install dependencies
 RUN apt-get update && apt-get install -y \
     curl \

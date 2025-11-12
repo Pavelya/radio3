@@ -24,7 +24,7 @@ services:
       - "host.docker.internal:host-gateway"
 
   icecast:
-    image: moul/icecast:2.4.4
+    image: infiniteproject/icecast:latest
     container_name: radio-icecast
     environment:
       - ICECAST_SOURCE_PASSWORD=hackme
@@ -35,7 +35,7 @@ services:
       # Port 8001 (avoids conflict with API server on 8000)
       - "8001:8001"
     volumes:
-      - ./icecast.xml:/etc/icecast2/icecast.xml:ro
+      - ./icecast.xml:/etc/icecast.xml:ro
     restart: unless-stopped
     networks:
       - radio-network

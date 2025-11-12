@@ -15,6 +15,7 @@ if grep -r -n \
   --exclude-dir=.next \
   --exclude-dir=dist \
   --exclude-dir=build \
+  --exclude-dir=venv \
   . 2>/dev/null; then
   FOUND=1
 fi
