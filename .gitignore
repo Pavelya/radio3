@@ -11,3 +11,11 @@ coverage/
 *.swp
 *.swo
 .claude/epics/
+
+# Audio cache and generated files
+*.wav
+*.mp3
+*.opus
+apps/playout/audio/
+apps/playout/logs/
+cache/
