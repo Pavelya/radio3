@@ -90,11 +90,35 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-12">
-        <div className="border-t border-white border-opacity-10 pt-8 text-center text-gray-400 text-sm">
-          <p>AI Radio 2525 - An experimental AI radio station</p>
-          <p className="mt-2">
-            Powered by Claude, Piper TTS, and Liquidsoap
-          </p>
+        <div className="border-t border-white border-opacity-10 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="text-center md:text-left text-gray-400 text-sm">
+              <p>AI Radio 2525 - An experimental AI radio station</p>
+              <p className="mt-2">
+                Powered by Claude, Piper TTS, and Liquidsoap
+              </p>
+            </div>
+
+            <div className="flex space-x-6 text-sm text-gray-400">
+              <Link href="/about" className="hover:text-white transition">
+                About
+              </Link>
+              <Link href="/how-it-works" className="hover:text-white transition">
+                How It Works
+              </Link>
+              <Link href="/schedule" className="hover:text-white transition">
+                Schedule
+              </Link>
+              <a
+                href="https://github.com/your-org/ai-radio-2525"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white transition"
+              >
+                GitHub
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
