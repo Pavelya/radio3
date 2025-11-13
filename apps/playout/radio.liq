@@ -89,11 +89,25 @@ def on_track_metadata(m) =
   m
 end
 
+# Function to mark segment as complete
+def on_track_end(m) =
+  segment_id = !current_segment_id
+
+  if segment_id != "" then
+    log("Marking segment complete: #{segment_id}")
+
+    cmd = "curl -s -X POST #{api_url}/playout/segment-complete/#{segment_id}"
+    result = process.run(cmd)
+
+    log("Complete result: #{result}")
+  end
+end
+
 # Apply metadata handler
 source = map_metadata(on_track_metadata, playlist_source)
 
-# TODO: Track completion callback not yet implemented in Liquidsoap 2.x
-# Will be added in future version with proper event handling
+# Apply on_end handler to mark segment complete when track finishes
+source = source.on_end(on_track_end)
 
 # Emergency/fallback playlist
 log("Loading emergency playlist from: " ^ emergency_dir)
