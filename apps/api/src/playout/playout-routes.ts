@@ -28,6 +28,12 @@ interface NowPlayingRequest {
   timestamp: string;
 }
 
+interface AlertRequest {
+  timestamp: string;
+  type: string;
+  details?: Record<string, any>;
+}
+
 /**
  * GET /playout/next
  * Get next segments ready for playout
@@ -227,6 +233,50 @@ router.post('/segment-complete/:segment_id', async (req, res) => {
 
   } catch (error) {
     logger.error({ error }, 'Error in /playout/segment-complete');
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /playout/alerts/dead-air
+ * Report dead air / silence detected by Liquidsoap
+ *
+ * Logs alert for monitoring and could trigger notifications
+ */
+router.post('/alerts/dead-air', async (req, res) => {
+  try {
+    const request: AlertRequest = req.body;
+
+    // Validate
+    if (!request.timestamp || !request.type) {
+      return res.status(400).json({
+        error: 'Missing required fields: timestamp, type'
+      });
+    }
+
+    // Log the alert prominently
+    logger.error(
+      {
+        timestamp: request.timestamp,
+        type: request.type,
+        details: request.details
+      },
+      'DEAD AIR ALERT: Silence detected in broadcast stream'
+    );
+
+    // In production, this could:
+    // - Send email/SMS notifications
+    // - Create incident in monitoring system (PagerDuty, etc.)
+    // - Store in alerts table for historical tracking
+    // - Trigger automated recovery procedures
+
+    res.json({
+      status: 'ok',
+      message: 'Dead air alert recorded'
+    });
+
+  } catch (error) {
+    logger.error({ error }, 'Error in /playout/alerts/dead-air');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -8,11 +8,13 @@ services:
       # Use host.docker.internal to access API running on host machine
       - API_URL=http://host.docker.internal:8000
       - OUTPUT_DIR=/radio/audio
+      - EMERGENCY_DIR=/radio/emergency
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8001
       - ICECAST_PASSWORD=hackme
     volumes:
       - ./audio:/radio/audio
+      - ./emergency:/radio/emergency:ro
       - ./logs:/var/log/liquidsoap
     depends_on:
       - icecast
@@ -36,6 +38,17 @@ services:
       - "8001:8001"
     volumes:
       - ./icecast.xml:/etc/icecast.xml:ro
+    restart: unless-stopped
+    networks:
+      - radio-network
+
+  # Stream health monitoring
+  monitor:
+    image: curlimages/curl:latest
+    container_name: radio-monitor
+    command: sh -c "while true; do curl -s http://icecast:8001/status.xsl > /dev/null && echo '[$(date)] Stream OK' || echo '[$(date)] Stream DOWN'; sleep 30; done"
+    depends_on:
+      - icecast
     restart: unless-stopped
     networks:
       - radio-network

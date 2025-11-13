@@ -17,6 +17,7 @@ settings.init.allow_root := true
 # Environment variables with defaults
 api_url = getenv("API_URL", "http://localhost:8000")
 audio_dir = getenv("OUTPUT_DIR", "/radio/audio")
+emergency_dir = getenv("EMERGENCY_DIR", "/radio/emergency")
 icecast_host = getenv("ICECAST_HOST", "localhost")
 icecast_port = getenv("ICECAST_PORT", "8001")
 icecast_password = getenv("ICECAST_PASSWORD", "hackme")
@@ -24,6 +25,7 @@ icecast_password = getenv("ICECAST_PASSWORD", "hackme")
 # Log configuration
 log("API URL: " ^ api_url)
 log("Audio directory: " ^ audio_dir)
+log("Emergency directory: " ^ emergency_dir)
 log("Icecast: " ^ icecast_host ^ ":" ^ icecast_port)
 
 # Global reference for current segment
@@ -87,10 +89,52 @@ source = map_metadata(on_track_metadata, playlist_source)
 # TODO: Track completion callback not yet implemented in Liquidsoap 2.x
 # Will be added in future version with proper event handling
 
-# Add blank detection (fallback to silence if no tracks)
-source = mksafe(source)
+# Emergency/fallback playlist
+log("Loading emergency playlist from: " ^ emergency_dir)
+emergency_playlist = playlist(
+  mode="randomize",
+  reload=60,
+  emergency_dir
+)
 
-# Normalize audio
+# Make emergency playlist safe (loop if empty)
+emergency_source = mksafe(emergency_playlist)
+
+# Dead air detection callbacks
+def on_blank() =
+  log("ALERT: Dead air detected! Switching to emergency playlist")
+
+  # Report to API
+  cmd = "curl -s -X POST " ^ api_url ^ "/playout/alerts/dead-air -H 'Content-Type: application/json' -d '{\"timestamp\": \"" ^ time.string() ^ "\", \"type\": \"dead_air\"}'"
+
+  result = process.run(cmd)
+  log("Alert sent to API: " ^ result)
+end
+
+def on_noise() =
+  log("Audio restored, returning to normal playout")
+end
+
+# Apply blank detection to main source (detects silence > 5 seconds)
+source = blank.detect(
+  max_blank=5.0,
+  on_noise=on_noise,
+  blank.detect(max_blank=5.0, on_blank=on_blank, source)
+)
+
+# Fallback chain: primary source -> emergency playlist
+source = fallback(
+  track_sensitive=false,
+  [source, emergency_source]
+)
+
+# Strip blank (remove silence at start/end of tracks)
+source = blank.strip(max_blank=2.0, source)
+
+# Add crossfade between tracks (smooth transitions)
+source = cross(duration=2.0, source)
+
+# Normalize audio (maintain consistent loudness)
 source = normalize(source, gain_max=0.0, gain_min=-6.0, target=-16.0)
 
 # Output to Icecast (Opus)
