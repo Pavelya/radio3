@@ -1,5 +1,7 @@
 import AudioPlayer from '@/components/audio-player';
 import NowPlaying from '@/components/now-playing';
+import Schedule from '@/components/schedule';
+import Link from 'next/link';
 
 export default function HomePage() {
   const streamUrl = process.env.NEXT_PUBLIC_STREAM_URL || 'http://localhost:8001/radio.opus';
@@ -40,6 +42,22 @@ export default function HomePage() {
 
           {/* Audio Player */}
           <AudioPlayer streamUrl={streamUrl} fallbackUrl={fallbackUrl} />
+
+          {/* Coming Up Schedule */}
+          <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-lg p-8 border border-white border-opacity-20">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-white">
+                Coming Up
+              </h2>
+              <Link
+                href="/schedule"
+                className="text-blue-300 hover:text-blue-200 text-sm"
+              >
+                View Full Schedule →
+              </Link>
+            </div>
+            <Schedule />
+          </div>
 
           {/* Info Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
