@@ -20,6 +20,7 @@ interface PlayoutSegment {
 interface PlayoutResponse {
   segments: PlayoutSegment[];
   total: number;
+  urgent: number;
 }
 
 interface NowPlayingRequest {
@@ -38,19 +39,23 @@ interface AlertRequest {
  * GET /playout/next
  * Get next segments ready for playout
  *
- * Returns segments in ready state with signed audio URLs
+ * Returns segments in ready state, ordered by priority then schedule
+ * Priority 8+ = urgent, should be played immediately
  */
 router.get('/next', async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 10, 1), 50);
+    const min_priority = Math.min(Math.max(parseInt(req.query.min_priority as string) || 1, 1), 10);
 
     const db = getDb();
 
-    // Fetch ready segments
+    // Fetch ready segments ordered by priority
     const { data: segments, error } = await db
       .from('segments')
       .select('*, assets(*), programs(name, djs(name))')
       .eq('state', 'ready')
+      .gte('priority', min_priority)
+      .order('priority', { ascending: false })
       .order('scheduled_start_ts', { ascending: true })
       .limit(limit);
 
@@ -60,6 +65,7 @@ router.get('/next', async (req, res) => {
     }
 
     const playoutSegments: PlayoutSegment[] = [];
+    let urgent_count = 0;
 
     for (const row of segments || []) {
       // Get asset
@@ -67,6 +73,12 @@ router.get('/next', async (req, res) => {
       if (!asset) {
         logger.warn({ segmentId: row.id }, 'Segment has no asset, skipping');
         continue;
+      }
+
+      // Count urgent segments
+      const priority = row.priority ?? 5;
+      if (priority >= 8) {
+        urgent_count++;
       }
 
       // Generate signed URL (1 hour expiry)
@@ -108,10 +120,10 @@ router.get('/next', async (req, res) => {
         continue;
       }
 
-      // Build segment object
+      // Build segment object with priority in title
       const segment: PlayoutSegment = {
         id: row.id,
-        title: `${row.programs?.name || 'Unknown'} - ${row.slot_type}`,
+        title: `[P${priority}] ${row.programs?.name || 'Unknown'} - ${row.slot_type}`,
         audio_url,
         duration_sec: row.duration_sec || 0,
         slot_type: row.slot_type,
@@ -123,7 +135,8 @@ router.get('/next', async (req, res) => {
 
     const response: PlayoutResponse = {
       segments: playoutSegments,
-      total: playoutSegments.length
+      total: playoutSegments.length,
+      urgent: urgent_count
     };
 
     res.json(response);
@@ -277,6 +290,68 @@ router.post('/alerts/dead-air', async (req, res) => {
 
   } catch (error) {
     logger.error({ error }, 'Error in /playout/alerts/dead-air');
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /playout/segments/:segment_id/priority
+ * Set priority for a segment
+ *
+ * Priority levels:
+ * - 1-4: Low priority (filler content)
+ * - 5-7: Normal priority (scheduled content)
+ * - 8-10: High priority (urgent/breaking news)
+ */
+router.post('/segments/:segment_id/priority', async (req, res) => {
+  try {
+    const { segment_id } = req.params;
+    const priority = parseInt(req.query.priority as string);
+
+    // Validate segment_id
+    if (!segment_id) {
+      return res.status(400).json({ error: 'Missing segment_id' });
+    }
+
+    // Validate priority
+    if (isNaN(priority) || priority < 1 || priority > 10) {
+      return res.status(400).json({
+        error: 'Priority must be between 1 and 10'
+      });
+    }
+
+    const db = getDb();
+
+    // Update segment priority
+    const { data, error } = await db
+      .from('segments')
+      .update({
+        priority,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', segment_id)
+      .select();
+
+    if (error) {
+      logger.error({ error, segmentId: segment_id }, 'Failed to update segment priority');
+      return res.status(500).json({ error: 'Failed to update segment priority' });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Segment not found' });
+    }
+
+    logger.info({ segmentId: segment_id, priority }, 'Segment priority updated');
+
+    res.json({
+      status: 'ok',
+      segment_id,
+      priority,
+      message: `Priority set to ${priority}`
+    });
+
+  } catch (error) {
+    logger.error({ error }, 'Error in /playout/segments/:segment_id/priority');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

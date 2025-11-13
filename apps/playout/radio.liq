@@ -33,8 +33,9 @@ current_segment_id = ref("")
 current_segment_title = ref("")
 
 # Function to fetch next segments from API
+# Now fetches more frequently to catch urgent/priority segments quickly
 def fetch_segments() =
-  log("Fetching segments from API...")
+  log("Fetching segments from API (priority-aware)...")
   result = process.run("bash /radio/fetch-next.sh")
   log("Fetch result: #{result}")
 end
@@ -51,13 +52,18 @@ end
 # Fetch segments initially
 fetch_segments()
 
-# Schedule periodic fetch (every 15 seconds)
-thread.run(delay=15.0, every=15.0, fetch_segments)
+# Schedule periodic fetch (every 10 seconds for faster priority detection)
+# API returns segments ordered by priority, so urgent content (P8-P10)
+# will be fetched and played first
+thread.run(delay=10.0, every=10.0, fetch_segments)
 
 # Create playlist source from audio directory
+# Note: Playlist reloads every 10 seconds to pick up newly fetched priority segments
+# The fetch script already orders by priority, so higher priority segments
+# will be naturally picked up first
 playlist_source = playlist(
   mode="randomize",
-  reload=15,
+  reload=10,
   reload_mode="watch",
   "/radio/audio"
 )

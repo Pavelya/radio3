@@ -107,19 +107,26 @@ export default async function SegmentsPage({
                 </td>
                 <td className="px-6 py-4 text-sm">{segment.slot_type}</td>
                 <td className="px-6 py-4">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      segment.state === 'ready'
-                        ? 'bg-green-100 text-green-800'
-                        : segment.state === 'failed'
-                        ? 'bg-red-100 text-red-800'
-                        : segment.state === 'aired'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
-                  >
-                    {segment.state}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        segment.state === 'ready'
+                          ? 'bg-green-100 text-green-800'
+                          : segment.state === 'failed'
+                          ? 'bg-red-100 text-red-800'
+                          : segment.state === 'aired'
+                          ? 'bg-gray-100 text-gray-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}
+                    >
+                      {segment.state}
+                    </span>
+                    {(segment.priority ?? 5) >= 8 && (
+                      <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800 font-bold">
+                        🚨 URGENT
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {segment.duration_sec ? `${Math.round(segment.duration_sec)}s` : '-'}

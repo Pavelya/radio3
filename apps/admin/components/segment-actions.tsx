@@ -64,6 +64,26 @@ export default function SegmentActions({ segment }: SegmentActionsProps) {
     }
   };
 
+  const handleSetPriority = async (priority: number) => {
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://localhost:8000/playout/segments/${segment.id}/priority?priority=${priority}`,
+        { method: 'POST' }
+      );
+
+      if (!response.ok) throw new Error('Failed to set priority');
+
+      router.refresh();
+    } catch (error) {
+      console.error('Set priority failed:', error);
+      alert('Failed to set priority');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex space-x-2">
       <Link
@@ -83,6 +103,23 @@ export default function SegmentActions({ segment }: SegmentActionsProps) {
           >
             {loading ? 'Retrying...' : 'Retry'}
           </button>
+        </>
+      )}
+
+      {segment.state === 'ready' && (
+        <>
+          <span className="text-gray-300">|</span>
+          <select
+            onChange={(e) => handleSetPriority(parseInt(e.target.value))}
+            value={segment.priority || 5}
+            className="text-sm border rounded px-2 py-1 disabled:opacity-50"
+            disabled={loading}
+          >
+            <option value="1">P1 - Low</option>
+            <option value="5">P5 - Normal</option>
+            <option value="8">P8 - Urgent</option>
+            <option value="10">P10 - Critical</option>
+          </select>
         </>
       )}
 
