@@ -35,6 +35,8 @@ const navItems = [
     label: 'System',
     items: [
       { label: 'Monitoring', href: '/dashboard/monitoring', icon: '📈' },
+      { label: 'Daily Schedule', href: '/dashboard/schedule', icon: '📅' },
+      { label: 'Analytics', href: '/dashboard/analytics', icon: '📊' },
       { label: 'DLQ', href: '/dashboard/dlq', icon: '⚠️' },
     ],
   },
