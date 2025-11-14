@@ -61,10 +61,12 @@ thread.run(delay=10.0, every=10.0, fetch_segments)
 # Note: Playlist reloads every 10 seconds to pick up newly fetched priority segments
 # The fetch script already orders by priority, so higher priority segments
 # will be naturally picked up first
+# prefetch=15 ensures we always have tracks queued to prevent gaps
 playlist_source = playlist(
   mode="randomize",
   reload=10,
   reload_mode="watch",
+  prefetch=15,
   "/radio/audio"
 )
 
@@ -89,9 +91,10 @@ def on_track_metadata(m) =
   m
 end
 
-# Function to mark segment as complete
+# Function to mark segment as complete and cleanup audio file
 def on_track_end(m) =
   segment_id = !current_segment_id
+  filename = m["filename"]
 
   if segment_id != "" then
     log("Marking segment complete: #{segment_id}")
@@ -100,6 +103,19 @@ def on_track_end(m) =
     result = process.run(cmd)
 
     log("Complete result: #{result}")
+
+    # Delete the audio file after successful completion
+    # This prevents disk space accumulation from played segments
+    audio_file = "#{audio_dir}/#{segment_id}.wav"
+    log("Cleaning up audio file: #{audio_file}")
+
+    delete_result = process.run("rm -f #{audio_file}")
+
+    if delete_result.status == 0 then
+      log("Successfully deleted: #{audio_file}")
+    else
+      log("Warning: Failed to delete #{audio_file}")
+    end
   end
 end
 

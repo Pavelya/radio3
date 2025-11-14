@@ -95,14 +95,14 @@ else
     echo -e "${RED}✗${NC} Piper TTS Health: Unreachable"
 fi
 
-# Stream Check
-if curl -s -I http://localhost:8001/radio.opus 2>&1 | grep -q "200 OK"; then
+# Stream Check (Icecast doesn't support HEAD requests, so we fetch a small amount of data)
+if curl -s --max-time 2 --range 0-100 http://localhost:8001/radio.opus 2>&1 | head -c 10 | xxd >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} Stream (Opus): Available"
 else
     echo -e "${RED}✗${NC} Stream (Opus): Unavailable"
 fi
 
-if curl -s -I http://localhost:8001/radio.mp3 2>&1 | grep -q "200 OK"; then
+if curl -s --max-time 2 --range 0-100 http://localhost:8001/radio.mp3 2>&1 | head -c 10 | xxd >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} Stream (MP3): Available"
 else
     echo -e "${RED}✗${NC} Stream (MP3): Unavailable"
@@ -151,7 +151,7 @@ pgrep -f embedder-worker >/dev/null && PASSED_CHECKS=$((PASSED_CHECKS+1))
 pgrep -f mastering-worker >/dev/null && PASSED_CHECKS=$((PASSED_CHECKS+1))
 curl -s http://localhost:8000/health >/dev/null 2>&1 && PASSED_CHECKS=$((PASSED_CHECKS+1))
 curl -s http://localhost:5002/health >/dev/null 2>&1 && PASSED_CHECKS=$((PASSED_CHECKS+1))
-curl -s -I http://localhost:8001/radio.opus 2>&1 | grep -q "200 OK" && PASSED_CHECKS=$((PASSED_CHECKS+1))
+curl -s --max-time 2 --range 0-100 http://localhost:8001/radio.opus 2>&1 | head -c 10 | xxd >/dev/null 2>&1 && PASSED_CHECKS=$((PASSED_CHECKS+1))
 
 if [ $PASSED_CHECKS -eq $TOTAL_CHECKS ]; then
     echo -e "  ${GREEN}✓ All services running ($PASSED_CHECKS/$TOTAL_CHECKS)${NC}"

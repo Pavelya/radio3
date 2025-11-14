@@ -53,6 +53,25 @@ services:
     networks:
       - radio-network
 
+  # Audio cache cleanup (safety net for orphaned files)
+  # Cleans both playout cache (24h) and TTS cache (48h)
+  cache-cleanup:
+    image: alpine:latest
+    container_name: radio-cache-cleanup
+    environment:
+      - OUTPUT_DIR=/radio/audio
+      - MAX_AGE_HOURS=24
+      - TTS_CACHE_DIR=/radio/tts-cache
+      - TTS_MAX_AGE_HOURS=48
+    volumes:
+      - ./audio:/radio/audio
+      - ../../cache/tts:/radio/tts-cache
+      - ./cleanup-cache.sh:/cleanup-cache.sh:ro
+    command: sh -c "while true; do /cleanup-cache.sh; sleep 3600; done"
+    restart: unless-stopped
+    networks:
+      - radio-network
+
 networks:
   radio-network:
     driver: bridge

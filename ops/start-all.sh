@@ -52,7 +52,7 @@ echo "  → Starting Piper TTS (port 5002)..."
 docker compose up -d piper-tts
 sleep 2
 
-echo "  → Starting Icecast + Liquidsoap (port 8001)..."
+echo "  → Starting Icecast + Liquidsoap + Cache Cleanup (port 8001)..."
 cd "$PROJECT_ROOT/apps/playout"
 docker compose up -d
 sleep 3
@@ -161,6 +161,11 @@ echo ""
 echo "Services Status:"
 echo "  🐳 Docker Services:"
 docker ps --format "     {{.Names}}: {{.Status}}" | grep radio || echo "     None running"
+echo ""
+echo "  🧹 Cache Cleanup:"
+docker ps --filter "name=radio-cache-cleanup" --format "     Cache Cleanup: {{.Status}}" || echo "     Cache Cleanup: Not running"
+echo "     - Playout cache: 24h retention"
+echo "     - TTS cache: 48h retention (runs hourly)"
 echo ""
 echo "  📡 API & Workers:"
 lsof -i :8000 -sTCP:LISTEN -t >/dev/null 2>&1 && echo "     API Server: Running (port 8000)" || echo "     API Server: Not running"
