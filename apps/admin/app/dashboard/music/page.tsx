@@ -29,12 +29,20 @@ export default async function MusicPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Music Library</h1>
-        <Link
-          href="/dashboard/music/upload"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Upload Track
-        </Link>
+        <div className="flex space-x-3">
+          <Link
+            href="/dashboard/music/jingles"
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            View Jingles
+          </Link>
+          <Link
+            href="/dashboard/music/upload"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Upload Track
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
