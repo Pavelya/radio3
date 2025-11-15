@@ -1,0 +1,55 @@
+{
+  "description": "Hourly music clock - when to play music vs talk",
+  "default_music_duration_sec": 180,
+  "clocks": {
+    "morning": {
+      "time_range": "06:00-12:00",
+      "segments": [
+        {"minute": 0, "type": "station_id", "duration": 15},
+        {"minute": 0, "type": "talk", "duration": 240},
+        {"minute": 4, "type": "music", "duration": 180},
+        {"minute": 7, "type": "talk", "duration": 180},
+        {"minute": 10, "type": "music", "duration": 180},
+        {"minute": 13, "type": "talk", "duration": 240},
+        {"minute": 17, "type": "music", "duration": 180}
+      ],
+      "music_mood": "energetic",
+      "music_tempo": "fast"
+    },
+    "afternoon": {
+      "time_range": "12:00-18:00",
+      "segments": [
+        {"minute": 0, "type": "talk", "duration": 300},
+        {"minute": 5, "type": "music", "duration": 240},
+        {"minute": 9, "type": "talk", "duration": 240},
+        {"minute": 13, "type": "music", "duration": 180},
+        {"minute": 16, "type": "talk", "duration": 240}
+      ],
+      "music_mood": "calm",
+      "music_tempo": "medium"
+    },
+    "evening": {
+      "time_range": "18:00-23:00",
+      "segments": [
+        {"minute": 0, "type": "talk", "duration": 240},
+        {"minute": 4, "type": "music", "duration": 300},
+        {"minute": 9, "type": "talk", "duration": 180},
+        {"minute": 12, "type": "music", "duration": 240},
+        {"minute": 16, "type": "talk", "duration": 240}
+      ],
+      "music_mood": "calm",
+      "music_tempo": "medium"
+    },
+    "night": {
+      "time_range": "23:00-06:00",
+      "segments": [
+        {"minute": 0, "type": "talk", "duration": 180},
+        {"minute": 3, "type": "music", "duration": 300},
+        {"minute": 8, "type": "talk", "duration": 120},
+        {"minute": 10, "type": "music", "duration": 600}
+      ],
+      "music_mood": "ambient",
+      "music_tempo": "slow"
+    }
+  }
+}

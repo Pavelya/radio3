@@ -16,7 +16,8 @@ RUN mkdir -p /var/log/liquidsoap /var/run/liquidsoap /radio/audio
 # Copy scripts
 COPY radio.liq /radio/radio.liq
 COPY fetch-next.sh /radio/fetch-next.sh
-RUN chmod +x /radio/fetch-next.sh
+COPY music-scheduler.sh /radio/music-scheduler.sh
+RUN chmod +x /radio/fetch-next.sh /radio/music-scheduler.sh
 
 WORKDIR /radio
 

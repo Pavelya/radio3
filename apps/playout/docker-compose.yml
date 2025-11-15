@@ -8,6 +8,7 @@ services:
       # Use host.docker.internal to access API running on host machine
       - API_URL=http://host.docker.internal:8000
       - OUTPUT_DIR=/radio/audio
+      - MUSIC_DIR=/radio/audio/music
       - EMERGENCY_DIR=/radio/emergency
       - ICECAST_HOST=icecast
       - ICECAST_PORT=8001
@@ -16,6 +17,8 @@ services:
       - ./audio:/radio/audio
       - ./emergency:/radio/emergency:ro
       - ./logs:/var/log/liquidsoap
+      - ./music-scheduler.sh:/radio/music-scheduler.sh:ro
+      - ./fetch-next.sh:/radio/fetch-next.sh:ro
     depends_on:
       - icecast
     restart: unless-stopped

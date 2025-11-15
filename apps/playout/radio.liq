@@ -17,6 +17,7 @@ settings.init.allow_root := true
 # Environment variables with defaults
 api_url = getenv("API_URL", "http://localhost:8000")
 audio_dir = getenv("OUTPUT_DIR", "/radio/audio")
+music_dir = getenv("MUSIC_DIR", "/radio/audio/music")
 emergency_dir = getenv("EMERGENCY_DIR", "/radio/emergency")
 icecast_host = getenv("ICECAST_HOST", "localhost")
 icecast_port = getenv("ICECAST_PORT", "8001")
@@ -25,6 +26,7 @@ icecast_password = getenv("ICECAST_PASSWORD", "hackme")
 # Log configuration
 log("API URL: " ^ api_url)
 log("Audio directory: " ^ audio_dir)
+log("Music directory: " ^ music_dir)
 log("Emergency directory: " ^ emergency_dir)
 log("Icecast: " ^ icecast_host ^ ":" ^ icecast_port)
 
@@ -40,6 +42,13 @@ def fetch_segments() =
   log("Fetch result: #{result}")
 end
 
+# Function to fetch music tracks from API
+def fetch_music() =
+  log("Fetching music tracks...")
+  result = process.run("bash /radio/music-scheduler.sh")
+  log("Music fetch result: #{result}")
+end
+
 # Function to report now-playing to API
 def report_now_playing(segment_id, title) =
   log("Reporting now-playing: " ^ segment_id ^ " - " ^ title)
@@ -52,10 +61,16 @@ end
 # Fetch segments initially
 fetch_segments()
 
+# Fetch music initially
+fetch_music()
+
 # Schedule periodic fetch (every 10 seconds for faster priority detection)
 # API returns segments ordered by priority, so urgent content (P8-P10)
 # will be fetched and played first
 thread.run(delay=10.0, every=10.0, fetch_segments)
+
+# Schedule periodic music fetch (every 5 minutes)
+thread.run(delay=60.0, every=300.0, fetch_music)
 
 # Create playlist source from audio directory
 # Note: Playlist reloads every 10 seconds to pick up newly fetched priority segments
@@ -136,6 +151,20 @@ emergency_playlist = playlist(
 # Make emergency playlist safe (loop if empty)
 emergency_source = mksafe(emergency_playlist)
 
+# Music playlist
+log("Loading music playlist from: " ^ music_dir)
+music_playlist = playlist(
+  mode="randomize",
+  reload=60,
+  reload_mode="watch",
+  music_dir
+)
+
+# Apply fade and normalize to music
+music_source = fade.in(duration=2.0, music_playlist)
+music_source = fade.out(duration=2.0, music_source)
+music_source = normalize(music_source, target=-16.0)
+
 # Dead air detection callbacks
 def on_blank() =
   log("ALERT: Dead air detected! Switching to emergency playlist")
@@ -158,10 +187,11 @@ source = blank.detect(
   blank.detect(max_blank=5.0, on_blank=on_blank, source)
 )
 
-# Fallback chain: primary source -> emergency playlist
+# Fallback chain: talk segments -> music -> emergency playlist
+# This creates a smart mixing where music plays when talk is not available
 source = fallback(
-  track_sensitive=false,
-  [source, emergency_source]
+  track_sensitive=true,
+  [source, music_source, emergency_source]
 )
 
 # Strip blank (remove silence at start/end of tracks)
@@ -181,7 +211,7 @@ output.icecast(
   password="hackme",
   mount="radio.opus",
   name="AI Radio 2525",
-  description="Broadcasting from the year 2525",
+  description="Broadcasting from the year 2525 - AI Talk & Music",
   genre="Future Radio",
   url="https://radio2525.ai",
   source
@@ -195,11 +225,11 @@ output.icecast(
   password="hackme",
   mount="radio.mp3",
   name="AI Radio 2525",
-  description="Broadcasting from the year 2525",
+  description="Broadcasting from the year 2525 - AI Talk & Music",
   genre="Future Radio",
   url="https://radio2525.ai",
   source
 )
 
 # Log startup
-log("AI Radio 2525 started successfully")
+log("AI Radio 2525 with Music Integration started successfully")

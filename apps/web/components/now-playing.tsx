@@ -6,6 +6,9 @@ import { formatDistanceToNow } from 'date-fns';
 interface NowPlayingData {
   title: string;
   dj?: string;
+  artist?: string;
+  isMusic?: boolean;
+  attribution?: string;
   startedAt: string;
 }
 
@@ -32,9 +35,17 @@ export default function NowPlaying() {
           : data.icestats?.source;
 
         if (source) {
+          const title = source.title || source.server_name || 'AI Radio 2525';
+          const artist = source.artist;
+
+          // Determine if music (has artist field and not default station name) or talk
+          const isMusic = artist && artist !== 'AI Radio 2525' && title !== 'AI Radio 2525';
+
           setNowPlaying({
-            title: source.title || source.server_name || 'AI Radio 2525',
-            dj: source.artist,
+            title: title,
+            artist: artist,
+            isMusic: isMusic,
+            dj: isMusic ? undefined : artist,
             startedAt: new Date().toISOString(),
           });
           setError(false);
@@ -80,14 +91,40 @@ export default function NowPlaying() {
 
   return (
     <div className="text-center space-y-2">
-      <h2 className="text-2xl font-bold text-white">
-        {nowPlaying.title}
-      </h2>
-      {nowPlaying.dj && (
-        <p className="text-lg text-gray-300">
-          with {nowPlaying.dj}
-        </p>
+      {/* Music or Talk indicator */}
+      {nowPlaying.isMusic ? (
+        <>
+          <div className="text-sm text-gray-400 uppercase tracking-wide">
+            Now Playing
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            {nowPlaying.title}
+          </h2>
+          <p className="text-lg text-gray-300">
+            {nowPlaying.artist}
+          </p>
+          {nowPlaying.attribution && (
+            <p className="text-xs text-gray-500 italic">
+              {nowPlaying.attribution}
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="text-sm text-gray-400 uppercase tracking-wide">
+            On Air
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            {nowPlaying.title}
+          </h2>
+          {nowPlaying.dj && (
+            <p className="text-lg text-gray-300">
+              with {nowPlaying.dj}
+            </p>
+          )}
+        </>
       )}
+
       <p className="text-sm text-gray-400">
         Started {formatDistanceToNow(new Date(nowPlaying.startedAt), { addSuffix: true })}
       </p>
