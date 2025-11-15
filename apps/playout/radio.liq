@@ -1,7 +1,7 @@
 #!/usr/bin/liquidsoap
 
 # AI Radio 2525 - Liquidsoap Configuration
-# Basic playout with API integration
+# Professional Audio Production with Ducking, Compression, and Broadcast-Quality Processing
 #
 # Docker networking notes:
 # - API_URL: Set to host.docker.internal:8000 to reach API on host machine
@@ -13,6 +13,9 @@ settings.log.level := 4
 settings.server.telnet := true
 settings.server.telnet.port := 1234
 settings.init.allow_root := true
+
+# Load professional audio processing functions
+%include "/radio/audio-processing.liq"
 
 # Environment variables with defaults
 api_url = getenv("API_URL", "http://localhost:8000")
@@ -140,6 +143,12 @@ source = map_metadata(on_track_metadata, playlist_source)
 # Apply on_end handler to mark segment complete when track finishes
 source = source.on_end(on_track_end)
 
+# Apply professional audio processing to talk segments
+log("Applying professional audio processing to talk segments...")
+source = eq_talk(source)
+source = deess(source)
+source = compress_talk(source)
+
 # Emergency/fallback playlist
 log("Loading emergency playlist from: " ^ emergency_dir)
 emergency_playlist = playlist(
@@ -160,8 +169,13 @@ music_playlist = playlist(
   music_dir
 )
 
+# Apply professional audio processing to music
+log("Applying professional audio processing to music...")
+music_source = eq_music(music_playlist)
+music_source = compress_music(music_source)
+
 # Apply fade and normalize to music
-music_source = fade.in(duration=2.0, music_playlist)
+music_source = fade.in(duration=2.0, music_source)
 music_source = fade.out(duration=2.0, music_source)
 music_source = normalize(music_source, target=-16.0)
 
@@ -200,8 +214,15 @@ source = blank.strip(max_blank=2.0, source)
 # Add crossfade between tracks (smooth transitions)
 source = cross(duration=2.0, source)
 
-# Normalize audio (maintain consistent loudness)
-source = normalize(source, gain_max=0.0, gain_min=-6.0, target=-16.0)
+# Apply master chain for broadcast-quality output
+log("Applying master chain for broadcast quality...")
+source = master_chain(source)
+
+# Add final safety limiter
+source = limit_output(source)
+
+# Ensure no silence
+source = mksafe(source)
 
 # Output to Icecast (Opus)
 output.icecast(
@@ -232,4 +253,6 @@ output.icecast(
 )
 
 # Log startup
-log("AI Radio 2525 with Music Integration started successfully")
+log("AI Radio 2525 with Professional Audio Processing started successfully")
+log("Features: Compression, EQ, De-essing, Ducking, Master Limiter")
+log("Target loudness: -16 LUFS | Broadcast-quality output")
