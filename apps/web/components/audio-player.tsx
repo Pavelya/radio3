@@ -21,6 +21,22 @@ export default function AudioPlayer({ streamUrl, fallbackUrl }: AudioPlayerProps
     }
   }, [volume]);
 
+  useEffect(() => {
+    // Enable audio on iOS after user interaction
+    const enableAudio = () => {
+      if (audioRef.current) {
+        audioRef.current.load();
+      }
+    };
+
+    // iOS requires user interaction before playing audio
+    document.addEventListener('touchstart', enableAudio, { once: true });
+
+    return () => {
+      document.removeEventListener('touchstart', enableAudio);
+    };
+  }, []);
+
   const handlePlay = async () => {
     if (!audioRef.current) return;
 
@@ -28,6 +44,8 @@ export default function AudioPlayer({ streamUrl, fallbackUrl }: AudioPlayerProps
     setError(null);
 
     try {
+      // Mobile Safari requires this
+      audioRef.current.load();
       await audioRef.current.play();
       setPlaying(true);
     } catch (err: any) {
@@ -37,7 +55,7 @@ export default function AudioPlayer({ streamUrl, fallbackUrl }: AudioPlayerProps
         setError('Switching to compatible stream format...');
         setTimeout(() => setError(null), 2000);
       } else {
-        setError('Failed to play stream. Please try again.');
+        setError('Failed to play stream. Tap again to retry.');
         console.error('Playback error:', err);
       }
     } finally {

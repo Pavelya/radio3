@@ -1,6 +1,7 @@
 import AudioPlayer from '@/components/audio-player';
 import NowPlaying from '@/components/now-playing';
 import Schedule from '@/components/schedule';
+import InstallPrompt from '@/components/install-prompt';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -121,6 +122,9 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 }
