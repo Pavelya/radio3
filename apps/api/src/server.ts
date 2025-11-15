@@ -13,6 +13,7 @@ import cors from 'cors';
 import { ragRouter } from './rag/rag-routes';
 import { broadcastScheduleRouter } from './admin/broadcast-schedule-routes';
 import { playoutRouter } from './playout/playout-routes';
+import { musicRouter } from './music/music-routes';
 import { createLogger } from '@radio/core';
 
 const logger = createLogger('api-server');
@@ -31,6 +32,7 @@ app.use(express.json());
 app.use('/rag', ragRouter);
 app.use('/admin/broadcast-schedule', broadcastScheduleRouter);
 app.use('/playout', playoutRouter);
+app.use('/music', musicRouter);
 
 // Health check
 app.get('/health', (req, res) => {

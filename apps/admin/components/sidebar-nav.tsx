@@ -23,6 +23,7 @@ const navItems = [
       { label: 'Programs', href: '/dashboard/programs', icon: '📻' },
       { label: 'Format Clocks', href: '/dashboard/format-clocks', icon: '🕐' },
       { label: 'Schedule', href: '/dashboard/broadcast-schedule', icon: '📋' },
+      { label: 'Music Library', href: '/dashboard/music', icon: '🎵' },
     ],
   },
   {
