@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { ScriptGenerator } from '../llm/script-generator';
+import { ConversationGenerator } from '../llm/conversation-generator';
 import { RAGClient } from '../rag/rag-client';
 import { createLogger, type SegmentGenPayload } from '@radio/core';
 import { TTSClient } from '../tts/tts-client';
@@ -15,6 +16,7 @@ const logger = createLogger('segment-gen-handler');
 export class SegmentGenHandler {
   private db: SupabaseClient;
   private scriptGen: ScriptGenerator;
+  private conversationGen: ConversationGenerator;
   private ragClient: RAGClient;
   private ttsClient: TTSClient;
   private assetStorage: AssetStorage;
@@ -30,6 +32,7 @@ export class SegmentGenHandler {
 
     this.db = createClient(supabaseUrl, supabaseKey);
     this.scriptGen = new ScriptGenerator(anthropicKey);
+    this.conversationGen = new ConversationGenerator(anthropicKey);
     this.ragClient = new RAGClient();
     this.ttsClient = new TTSClient();
     this.assetStorage = new AssetStorage();
@@ -57,7 +60,13 @@ export class SegmentGenHandler {
         throw new Error(`Segment not found: ${segment_id}`);
       }
 
-      // 3. Fetch DJ and program info
+      // Check if this is a multi-speaker conversation
+      if (segment.conversation_format && segment.conversation_format !== 'monologue') {
+        await this.handleMultiSpeakerSegment(segment_id, segment);
+        return;
+      }
+
+      // 3. Fetch DJ and program info (for monologue segments)
       const dj = await this.fetchDJ(segment.program_id);
 
       // 4. Retrieve RAG context
@@ -331,5 +340,177 @@ export class SegmentGenHandler {
     }
 
     logger.info({ segmentId, assetId, jobId: data }, 'Mastering job enqueued');
+  }
+
+  /**
+   * Handle multi-speaker conversation segment generation
+   */
+  private async handleMultiSpeakerSegment(
+    segmentId: string,
+    segment: any
+  ): Promise<void> {
+    logger.info(
+      { segmentId, format: segment.conversation_format },
+      'Generating multi-speaker segment'
+    );
+
+    // 1. Fetch conversation participants
+    const { data: participants, error: participantsError } = await this.db
+      .from('conversation_participants')
+      .select('*, djs(*)')
+      .eq('segment_id', segmentId)
+      .order('speaking_order');
+
+    if (participantsError) {
+      throw participantsError;
+    }
+
+    if (!participants || participants.length < 2) {
+      throw new Error('Multi-speaker segment needs at least 2 participants');
+    }
+
+    // 2. Identify host and other participants
+    const host = participants.find(p => p.role === 'host') || participants[0];
+    const otherParticipants = participants.filter(p => p.id !== host.id);
+
+    // 3. Retrieve RAG context
+    const ragQuery = this.ragClient.buildQuery(
+      segment,
+      new Date().toISOString()
+    );
+
+    const ragResult = await this.ragClient.retrieve(ragQuery);
+
+    logger.info({
+      segmentId,
+      ragChunks: ragResult.chunks.length,
+      queryTime: ragResult.query_time_ms
+    }, 'RAG context retrieved for conversation');
+
+    // 4. Build RAG context string
+    const retrievedContext = ragResult.chunks
+      .slice(0, 5)
+      .map((chunk, i) => {
+        return `[Source ${i + 1}: ${chunk.source_type}]\n${chunk.chunk_text}\n[Relevance: ${(chunk.final_score * 100).toFixed(1)}%]`;
+      })
+      .join('\n\n---\n\n');
+
+    // 5. Update state to generating
+    await this.updateSegmentState(segmentId, 'generating');
+
+    // 6. Build conversation context
+    const conversationContext = {
+      format: segment.conversation_format,
+      host: {
+        name: host.djs.name,
+        personality: Array.isArray(host.djs.personality_traits)
+          ? host.djs.personality_traits.join(', ')
+          : host.djs.personality_traits || 'Professional and engaging',
+      },
+      participants: otherParticipants.map(p => ({
+        name: p.character_name || p.djs.name,
+        role: p.role,
+        background: p.character_background || (
+          Array.isArray(p.djs.personality_traits)
+            ? p.djs.personality_traits.join(', ')
+            : p.djs.personality_traits || ''
+        ),
+        expertise: p.character_expertise,
+      })),
+      topic: segment.slot_type,
+      retrievedContext,
+      duration: segment.duration_sec || this.getTargetDuration(segment.slot_type),
+      tone: this.determineTone(segment.slot_type),
+      futureYear: 2525,
+    };
+
+    // 7. Generate conversation
+    const conversationResult = await this.conversationGen.generateConversation(
+      conversationContext
+    );
+
+    logger.info({
+      segmentId,
+      turns: conversationResult.turns.length,
+      speakers: participants.length,
+    }, 'Conversation script generated');
+
+    // 8. Validate conversation
+    const validation = this.conversationGen.validateConversation(conversationResult.turns);
+    if (!validation.valid) {
+      logger.warn({ issues: validation.issues }, 'Conversation quality issues detected');
+    }
+
+    // 9. Update segment with script
+    await this.updateSegmentWithScript(
+      segmentId,
+      conversationResult.fullScript,
+      ragResult.chunks.slice(0, 5).map((chunk, i) => ({
+        index: i + 1,
+        source_id: chunk.source_id,
+        source_type: chunk.source_type,
+        chunk_id: chunk.chunk_id,
+        score: chunk.final_score
+      })),
+      conversationResult.metrics
+    );
+
+    // 10. Store conversation turns
+    for (let i = 0; i < conversationResult.turns.length; i++) {
+      const turn = conversationResult.turns[i];
+
+      // Find matching participant by name
+      const participant = participants.find(
+        p =>
+          p.djs.name.toUpperCase() === turn.speaker ||
+          p.character_name?.toUpperCase() === turn.speaker
+      );
+
+      const { error: turnError } = await this.db
+        .from('conversation_turns')
+        .insert({
+          segment_id: segmentId,
+          participant_id: participant?.id,
+          turn_number: i + 1,
+          speaker_name: turn.speaker,
+          text_content: turn.text,
+        });
+
+      if (turnError) {
+        logger.error({ error: turnError, segmentId, turn: i + 1 }, 'Failed to store conversation turn');
+        throw turnError;
+      }
+    }
+
+    logger.info({
+      segmentId,
+      turns: conversationResult.turns.length,
+    }, 'Conversation turns stored');
+
+    // 11. For now, we'll update state to rendering
+    // Note: Multi-voice TTS synthesis will be implemented in task S2
+    await this.updateSegmentState(segmentId, 'rendering');
+
+    // TODO: Task S2 - Implement multi-voice TTS synthesis
+    // For now, we mark the segment as ready with script only
+    logger.info({ segmentId }, 'Multi-speaker segment ready (TTS pending - Task S2)');
+
+    await this.updateSegmentState(segmentId, 'ready');
+  }
+
+  /**
+   * Determine tone based on slot type
+   */
+  private determineTone(slotType: string): string {
+    const tones: Record<string, string> = {
+      'news': 'Professional and authoritative',
+      'culture': 'Engaging and insightful',
+      'tech': 'Enthusiastic and informative',
+      'history': 'Educational and storytelling',
+      'interview': 'Conversational and probing',
+      'station_id': 'Energetic and branded',
+    };
+
+    return tones[slotType] || 'Professional and engaging';
   }
 }

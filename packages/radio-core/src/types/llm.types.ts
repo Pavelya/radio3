@@ -52,3 +52,46 @@ export type SegmentContext = {
   ragChunks: RAGChunk[];
   futureYear: number; // The broadcast year (e.g., 2525)
 };
+
+/**
+ * Context for multi-speaker conversation generation
+ */
+export type ConversationContext = {
+  format: 'interview' | 'panel' | 'debate' | 'dialogue';
+  host: {
+    name: string;
+    personality: string;
+  };
+  participants: Array<{
+    name: string;
+    role: string;
+    background?: string;
+    expertise?: string;
+  }>;
+  topic: string;
+  retrievedContext: string;
+  duration: number; // seconds
+  tone: string;
+  futureYear?: number; // Default 2525
+};
+
+/**
+ * Individual turn in a multi-speaker conversation
+ */
+export type ConversationTurn = {
+  speaker: string;
+  text: string;
+};
+
+/**
+ * Result from conversation generation
+ */
+export type ConversationResult = {
+  turns: ConversationTurn[];
+  fullScript: string;
+  metrics: {
+    inputTokens: number;
+    outputTokens: number;
+    generationTimeMs: number;
+  };
+};
