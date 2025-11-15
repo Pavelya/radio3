@@ -1,10 +1,26 @@
 import { Router, type Router as ExpressRouter } from 'express';
+import multer from 'multer';
 import { getDb } from '../db';
 import { MusicService } from './music-service';
 import { createLogger } from '@radio/core';
 
 const logger = createLogger('music-routes');
 const router: ExpressRouter = Router();
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max
+  },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('audio/')) {
+      cb(new Error('Only audio files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 // Initialize service
 const db = getDb();
@@ -179,6 +195,102 @@ router.get('/playlists/:playlist_id/tracks', async (req, res) => {
   } catch (error) {
     logger.error({ error }, 'Error in playlist tracks endpoint');
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /music/upload
+ * Upload music file to storage
+ */
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const result = await musicService.uploadMusicFile(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    if (result.isDuplicate) {
+      return res.status(409).json({
+        duplicate: true,
+        existingTrack: result.existingTrack,
+        message: 'File already exists in library',
+      });
+    }
+
+    res.json({
+      storagePath: result.storagePath,
+      fileHash: result.fileHash,
+      filename: req.file.originalname,
+    });
+  } catch (error: any) {
+    logger.error({ error }, 'Upload error');
+    res.status(500).json({ error: error.message || 'Upload failed' });
+  }
+});
+
+/**
+ * POST /music/tracks
+ * Create track metadata
+ */
+router.post('/tracks', async (req, res) => {
+  try {
+    const track = await musicService.createTrack(req.body);
+    res.status(201).json({ track });
+  } catch (error: any) {
+    logger.error({ error }, 'Create track error');
+    res.status(500).json({ error: error.message || 'Failed to create track' });
+  }
+});
+
+/**
+ * GET /music/tracks/:id
+ * Get track by ID
+ */
+router.get('/tracks/:id', async (req, res) => {
+  try {
+    const track = await musicService.getTrackById(req.params.id);
+
+    if (!track) {
+      return res.status(404).json({ error: 'Track not found' });
+    }
+
+    res.json({ track });
+  } catch (error: any) {
+    logger.error({ error }, 'Get track error');
+    res.status(404).json({ error: error.message || 'Track not found' });
+  }
+});
+
+/**
+ * PATCH /music/tracks/:id
+ * Update track metadata
+ */
+router.patch('/tracks/:id', async (req, res) => {
+  try {
+    const track = await musicService.updateTrack(req.params.id, req.body);
+    res.json({ track });
+  } catch (error: any) {
+    logger.error({ error }, 'Update track error');
+    res.status(500).json({ error: error.message || 'Failed to update track' });
+  }
+});
+
+/**
+ * DELETE /music/tracks/:id
+ * Delete track
+ */
+router.delete('/tracks/:id', async (req, res) => {
+  try {
+    await musicService.deleteTrack(req.params.id);
+    res.json({ success: true });
+  } catch (error: any) {
+    logger.error({ error }, 'Delete track error');
+    res.status(500).json({ error: error.message || 'Failed to delete track' });
   }
 });
 
