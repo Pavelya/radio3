@@ -95,3 +95,29 @@ export type ConversationResult = {
     generationTimeMs: number;
   };
 };
+
+/**
+ * Guest character profile for interviews
+ */
+export type GuestProfile = {
+  name: string;
+  role: string;
+  background: string;
+  expertise: string;
+  personality: string;
+  speakingStyle: string;
+};
+
+/**
+ * Interview format template structure
+ */
+export type InterviewFormat = {
+  name: string;
+  description: string;
+  duration: number;
+  structure: Array<{
+    section: string;
+    durationPct: number;
+    questions: number;
+  }>;
+};

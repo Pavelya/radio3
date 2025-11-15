@@ -42,12 +42,20 @@ export default async function SegmentsPage({
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Segments</h1>
-        <Link
-          href="/dashboard/segments/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Create Segment
-        </Link>
+        <div className="flex space-x-2">
+          <Link
+            href="/dashboard/segments/new"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Create Segment
+          </Link>
+          <Link
+            href="/dashboard/segments/create-conversation"
+            className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+          >
+            Create Conversation
+          </Link>
+        </div>
       </div>
 
       {/* State Filter */}
