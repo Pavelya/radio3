@@ -4,6 +4,7 @@ import { ConversationGenerator } from '../llm/conversation-generator';
 import { RAGClient } from '../rag/rag-client';
 import { createLogger, type SegmentGenPayload } from '@radio/core';
 import { TTSClient } from '../tts/tts-client';
+import { MultiVoiceRenderer } from '../tts/multi-voice-renderer';
 import { AssetStorage } from '../storage/asset-storage';
 import { promises as fs } from 'fs';
 
@@ -19,6 +20,7 @@ export class SegmentGenHandler {
   private conversationGen: ConversationGenerator;
   private ragClient: RAGClient;
   private ttsClient: TTSClient;
+  private multiVoiceRenderer: MultiVoiceRenderer;
   private assetStorage: AssetStorage;
 
   constructor() {
@@ -35,6 +37,7 @@ export class SegmentGenHandler {
     this.conversationGen = new ConversationGenerator(anthropicKey);
     this.ragClient = new RAGClient();
     this.ttsClient = new TTSClient();
+    this.multiVoiceRenderer = new MultiVoiceRenderer();
     this.assetStorage = new AssetStorage();
 
     logger.info('Segment generation handler initialized');
@@ -487,15 +490,39 @@ export class SegmentGenHandler {
       turns: conversationResult.turns.length,
     }, 'Conversation turns stored');
 
-    // 11. For now, we'll update state to rendering
-    // Note: Multi-voice TTS synthesis will be implemented in task S2
+    // 11. Update state to rendering
     await this.updateSegmentState(segmentId, 'rendering');
 
-    // TODO: Task S2 - Implement multi-voice TTS synthesis
-    // For now, we mark the segment as ready with script only
-    logger.info({ segmentId }, 'Multi-speaker segment ready (TTS pending - Task S2)');
+    // 12. Render multi-voice audio
+    logger.info({ segmentId }, 'Starting multi-voice TTS synthesis');
 
-    await this.updateSegmentState(segmentId, 'ready');
+    const audioPath = await this.multiVoiceRenderer.renderConversation(segmentId);
+
+    // 13. Store audio asset
+    const asset = await this.assetStorage.storeAudio(audioPath, 'speech');
+
+    // Clean up temp file
+    await fs.unlink(audioPath);
+
+    // 14. Update segment with asset
+    await this.updateSegmentWithAsset(segmentId, asset.assetId, asset.durationSec);
+
+    logger.info({
+      segmentId,
+      assetId: asset.assetId,
+      duration: asset.durationSec
+    }, 'Multi-voice audio asset stored');
+
+    // 15. Clean up temporary conversation audio files
+    await this.multiVoiceRenderer.cleanup(segmentId);
+
+    // 16. Update state to normalizing
+    await this.updateSegmentState(segmentId, 'normalizing');
+
+    // 17. Enqueue mastering job
+    await this.enqueueMasteringJob(segmentId, asset.assetId);
+
+    logger.info({ segmentId }, 'Multi-speaker segment generation complete');
   }
 
   /**

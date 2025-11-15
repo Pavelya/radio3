@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import VoicePreview from '@/components/voice-preview';
 
 export default async function ConversationPage({
   params,
@@ -165,16 +166,13 @@ export default async function ConversationPage({
                     </div>
                   </div>
                   <div className="text-gray-900">{turn.text_content}</div>
-                  {turn.duration_sec && (
-                    <div className="text-xs text-gray-500 mt-2">
-                      Duration: {Math.round(turn.duration_sec)}s
-                    </div>
-                  )}
-                  {turn.audio_path && (
-                    <div className="text-xs text-green-600 mt-1">
-                      ✓ Audio synthesized
-                    </div>
-                  )}
+
+                  <VoicePreview
+                    turnId={turn.id}
+                    text={turn.text_content}
+                    audioPath={turn.audio_path}
+                    durationSec={turn.duration_sec}
+                  />
                 </div>
               );
             })}
