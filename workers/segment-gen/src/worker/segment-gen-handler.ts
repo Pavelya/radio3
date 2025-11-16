@@ -7,6 +7,7 @@ import { TTSClient } from '../tts/tts-client';
 import { MultiVoiceRenderer } from '../tts/multi-voice-renderer';
 import { AssetStorage } from '../storage/asset-storage';
 import { ToneValidator } from '../validators/tone-validator';
+import { ConsistencyChecker } from '../validators/consistency-checker';
 import { promises as fs } from 'fs';
 
 const logger = createLogger('segment-gen-handler');
@@ -34,6 +35,7 @@ export class SegmentGenHandler {
   private multiVoiceRenderer: MultiVoiceRenderer;
   private assetStorage: AssetStorage;
   private toneValidator: ToneValidator;
+  private consistencyChecker: ConsistencyChecker;
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -52,6 +54,7 @@ export class SegmentGenHandler {
     this.multiVoiceRenderer = new MultiVoiceRenderer();
     this.assetStorage = new AssetStorage();
     this.toneValidator = new ToneValidator();
+    this.consistencyChecker = new ConsistencyChecker();
 
     logger.info('Segment generation handler initialized');
   }
@@ -141,6 +144,43 @@ export class SegmentGenHandler {
           score: toneAnalysis.score,
           issues: toneAnalysis.issues,
         }, 'Script failed tone validation but continuing');
+      }
+
+      // 7c. Check consistency against canonical lore
+      const contradictions = await this.consistencyChecker.checkScript(
+        segment_id,
+        scriptResult.scriptMd
+      );
+
+      const timelineIssues = await this.consistencyChecker.checkTimeline(
+        scriptResult.scriptMd
+      );
+
+      if (contradictions.length > 0 || timelineIssues.length > 0) {
+        logger.warn({
+          segment_id,
+          contradictions: contradictions.length,
+          timelineIssues: timelineIssues.length,
+        }, 'Consistency issues detected');
+
+        // Flag for review if major contradictions
+        const majorContradictions = contradictions.filter(
+          (c) => c.severity === 'major'
+        );
+
+        if (majorContradictions.length > 0) {
+          await this.db
+            .from('segments')
+            .update({
+              state: 'failed',
+              last_error: `Major lore contradictions detected: ${majorContradictions.map(c => c.factKey).join(', ')}`,
+            })
+            .eq('id', segment_id);
+
+          throw new Error(
+            'Major lore contradictions - segment generation aborted'
+          );
+        }
       }
 
       // 8. Update segment with script and tone analysis
@@ -488,6 +528,43 @@ export class SegmentGenHandler {
         score: toneAnalysis.score,
         issues: toneAnalysis.issues,
       }, 'Conversation failed tone validation but continuing');
+    }
+
+    // 8c. Check consistency against canonical lore
+    const contradictions = await this.consistencyChecker.checkScript(
+      segmentId,
+      conversationResult.fullScript
+    );
+
+    const timelineIssues = await this.consistencyChecker.checkTimeline(
+      conversationResult.fullScript
+    );
+
+    if (contradictions.length > 0 || timelineIssues.length > 0) {
+      logger.warn({
+        segmentId,
+        contradictions: contradictions.length,
+        timelineIssues: timelineIssues.length,
+      }, 'Consistency issues detected in conversation');
+
+      // Flag for review if major contradictions
+      const majorContradictions = contradictions.filter(
+        (c) => c.severity === 'major'
+      );
+
+      if (majorContradictions.length > 0) {
+        await this.db
+          .from('segments')
+          .update({
+            state: 'failed',
+            last_error: `Major lore contradictions detected: ${majorContradictions.map(c => c.factKey).join(', ')}`,
+          })
+          .eq('id', segmentId);
+
+        throw new Error(
+          'Major lore contradictions - conversation generation aborted'
+        );
+      }
     }
 
     // 9. Update segment with script
