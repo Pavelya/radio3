@@ -162,6 +162,78 @@ export default async function SegmentDetailPage({
           </div>
         )}
 
+        {/* Tone Analysis */}
+        {segment.tone_score !== null && segment.tone_score !== undefined && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tone Analysis
+            </label>
+            <div className="bg-gray-50 p-4 rounded">
+              <div className="flex items-center space-x-4 mb-3">
+                <div>
+                  <span className="text-sm text-gray-600">Score:</span>
+                  <span
+                    className={`ml-2 font-bold ${
+                      segment.tone_score >= 80
+                        ? 'text-green-600'
+                        : segment.tone_score >= 60
+                        ? 'text-yellow-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {segment.tone_score}/100
+                  </span>
+                </div>
+                {segment.tone_balance && (
+                  <div>
+                    <span className="text-sm text-gray-600">Balance:</span>
+                    <span className="ml-2 font-mono text-sm">
+                      {segment.tone_balance}
+                    </span>
+                    <span className="ml-1 text-xs text-gray-500">
+                      (Target: 60/30/10)
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {segment.validation_issues &&
+                Array.isArray(segment.validation_issues) &&
+                segment.validation_issues.length > 0 && (
+                  <div className="mb-3">
+                    <div className="text-sm font-medium text-red-600 mb-1">
+                      Issues:
+                    </div>
+                    <ul className="text-sm text-gray-700 list-disc list-inside">
+                      {segment.validation_issues.map(
+                        (issue: string, i: number) => (
+                          <li key={i}>{issue}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+              {segment.validation_suggestions &&
+                Array.isArray(segment.validation_suggestions) &&
+                segment.validation_suggestions.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-blue-600 mb-1">
+                      Suggestions:
+                    </div>
+                    <ul className="text-sm text-gray-700 list-disc list-inside">
+                      {segment.validation_suggestions.map(
+                        (suggestion: string, i: number) => (
+                          <li key={i}>{suggestion}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+            </div>
+          </div>
+        )}
+
         {/* Generation Metrics */}
         {segment.generation_metrics && (
           <div>

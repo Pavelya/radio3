@@ -6,9 +6,20 @@ import { createLogger, type SegmentGenPayload } from '@radio/core';
 import { TTSClient } from '../tts/tts-client';
 import { MultiVoiceRenderer } from '../tts/multi-voice-renderer';
 import { AssetStorage } from '../storage/asset-storage';
+import { ToneValidator } from '../validators/tone-validator';
 import { promises as fs } from 'fs';
 
 const logger = createLogger('segment-gen-handler');
+
+/**
+ * Calculate the future year based on current year + offset
+ * Default offset is 500 years (configurable via FUTURE_YEAR_OFFSET env var)
+ */
+function getFutureYear(): number {
+  const currentYear = new Date().getFullYear();
+  const offset = parseInt(process.env.FUTURE_YEAR_OFFSET || '500', 10);
+  return currentYear + offset;
+}
 
 /**
  * Handler for segment_make jobs
@@ -22,6 +33,7 @@ export class SegmentGenHandler {
   private ttsClient: TTSClient;
   private multiVoiceRenderer: MultiVoiceRenderer;
   private assetStorage: AssetStorage;
+  private toneValidator: ToneValidator;
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -39,6 +51,7 @@ export class SegmentGenHandler {
     this.ttsClient = new TTSClient();
     this.multiVoiceRenderer = new MultiVoiceRenderer();
     this.assetStorage = new AssetStorage();
+    this.toneValidator = new ToneValidator();
 
     logger.info('Segment generation handler initialized');
   }
@@ -97,7 +110,7 @@ export class SegmentGenHandler {
         djPersonality: dj.personality_traits,
         referenceTime: new Date().toISOString(),
         ragChunks: ragResult.chunks,
-        futureYear: 2525
+        futureYear: getFutureYear()
       });
 
       logger.info({
@@ -119,13 +132,35 @@ export class SegmentGenHandler {
         }, 'Script validation issues');
       }
 
-      // 8. Update segment with script
+      // 7b. Validate tone against style guide
+      const toneAnalysis = this.toneValidator.analyzeScript(scriptResult.scriptMd);
+
+      if (!this.toneValidator.isAcceptable(toneAnalysis)) {
+        logger.warn({
+          segment_id,
+          score: toneAnalysis.score,
+          issues: toneAnalysis.issues,
+        }, 'Script failed tone validation but continuing');
+      }
+
+      // 8. Update segment with script and tone analysis
       await this.updateSegmentWithScript(
         segment_id,
         scriptResult.scriptMd,
         scriptResult.citations,
         scriptResult.metrics
       );
+
+      // 8b. Store tone validation results
+      await this.db
+        .from('segments')
+        .update({
+          tone_score: toneAnalysis.score,
+          tone_balance: `${toneAnalysis.optimismPct}/${toneAnalysis.realismPct}/${toneAnalysis.wonderPct}`,
+          validation_issues: toneAnalysis.issues,
+          validation_suggestions: toneAnalysis.suggestions,
+        })
+        .eq('id', segment_id);
 
       // 9. Update state to rendering (TTS next)
       await this.updateSegmentState(segment_id, 'rendering');
@@ -424,7 +459,7 @@ export class SegmentGenHandler {
       retrievedContext,
       duration: segment.duration_sec || this.getTargetDuration(segment.slot_type),
       tone: this.determineTone(segment.slot_type),
-      futureYear: 2525,
+      futureYear: getFutureYear(),
     };
 
     // 7. Generate conversation
@@ -444,6 +479,17 @@ export class SegmentGenHandler {
       logger.warn({ issues: validation.issues }, 'Conversation quality issues detected');
     }
 
+    // 8b. Validate tone against style guide
+    const toneAnalysis = this.toneValidator.analyzeScript(conversationResult.fullScript);
+
+    if (!this.toneValidator.isAcceptable(toneAnalysis)) {
+      logger.warn({
+        segmentId,
+        score: toneAnalysis.score,
+        issues: toneAnalysis.issues,
+      }, 'Conversation failed tone validation but continuing');
+    }
+
     // 9. Update segment with script
     await this.updateSegmentWithScript(
       segmentId,
@@ -457,6 +503,17 @@ export class SegmentGenHandler {
       })),
       conversationResult.metrics
     );
+
+    // 9b. Store tone validation results
+    await this.db
+      .from('segments')
+      .update({
+        tone_score: toneAnalysis.score,
+        tone_balance: `${toneAnalysis.optimismPct}/${toneAnalysis.realismPct}/${toneAnalysis.wonderPct}`,
+        validation_issues: toneAnalysis.issues,
+        validation_suggestions: toneAnalysis.suggestions,
+      })
+      .eq('id', segmentId);
 
     // 10. Store conversation turns
     for (let i = 0; i < conversationResult.turns.length; i++) {

@@ -9,7 +9,9 @@ const logger = createLogger('claude-client');
  */
 export class ClaudeClient {
   private client: Anthropic;
-  private readonly defaultModel = 'claude-3-5-haiku-20241022';
+  private readonly defaultModel: string;
+  private readonly defaultMaxTokens: number;
+  private readonly defaultTemperature: number;
 
   constructor(apiKey?: string) {
     const key = apiKey || process.env.ANTHROPIC_API_KEY;
@@ -22,7 +24,16 @@ export class ClaudeClient {
       apiKey: key
     });
 
-    logger.info({ model: this.defaultModel }, 'Claude client initialized');
+    // Load defaults from environment variables
+    this.defaultModel = process.env.SCRIPT_MODEL || 'claude-3-5-haiku-20241022';
+    this.defaultMaxTokens = parseInt(process.env.SCRIPT_MAX_TOKENS || '2048', 10);
+    this.defaultTemperature = parseFloat(process.env.SCRIPT_TEMPERATURE || '0.7');
+
+    logger.info({
+      model: this.defaultModel,
+      maxTokens: this.defaultMaxTokens,
+      temperature: this.defaultTemperature
+    }, 'Claude client initialized');
   }
 
   /**
@@ -32,8 +43,8 @@ export class ClaudeClient {
     const {
       systemPrompt,
       userPrompt,
-      maxTokens = 2048,
-      temperature = 0.7,
+      maxTokens = this.defaultMaxTokens,
+      temperature = this.defaultTemperature,
       model = this.defaultModel
     } = request;
 

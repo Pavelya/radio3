@@ -3,6 +3,7 @@
  */
 
 import type { ConversationContext } from '@radio/core';
+import { RADIO_2525_SYSTEM_PROMPT, getStyleGuideRules } from '../prompts/system-prompt';
 
 /**
  * Interview prompt template
@@ -10,7 +11,11 @@ import type { ConversationContext } from '@radio/core';
 export function createInterviewPrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
-  return `You are writing a radio interview script for AI Radio ${year}, broadcasting from the year ${year}.
+  return `${RADIO_2525_SYSTEM_PROMPT}
+
+---
+
+You are writing a radio interview script for AI Radio ${year}, broadcasting from the year ${year}.
 
 HOST: ${ctx.host.name}
 Personality: ${ctx.host.personality}
@@ -40,6 +45,7 @@ INSTRUCTIONS:
 8. Maintain the optimistic yet realistic tone of classic 20th-century sci-fi
 9. Reference specific facts from the retrieved context when relevant
 10. End with a natural conclusion and thank you
+${getStyleGuideRules()}
 
 FORMAT:
 Write as a dialogue script:
@@ -65,7 +71,11 @@ export function createPanelPrompt(ctx: ConversationContext): string {
     .map(p => `- ${p.name} (${p.role}): ${p.expertise || 'Expert panelist'}`)
     .join('\n');
 
-  return `You are writing a panel discussion script for AI Radio ${year}, broadcasting from the year ${year}.
+  return `${RADIO_2525_SYSTEM_PROMPT}
+
+---
+
+You are writing a panel discussion script for AI Radio ${year}, broadcasting from the year ${year}.
 
 HOST/MODERATOR: ${ctx.host.name}
 Personality: ${ctx.host.personality}
@@ -93,6 +103,7 @@ INSTRUCTIONS:
 8. Incorporate ${year} world details naturally
 9. Show expertise through specific examples and insights
 10. Create moments of friendly debate and intellectual exchange
+${getStyleGuideRules()}
 
 FORMAT:
 HOST: [dialogue]
@@ -112,7 +123,11 @@ Begin the panel discussion now:`;
 export function createDebatePrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
-  return `You are writing a debate script for AI Radio ${year}, broadcasting from the year ${year}.
+  return `${RADIO_2525_SYSTEM_PROMPT}
+
+---
+
+You are writing a debate script for AI Radio ${year}, broadcasting from the year ${year}.
 
 MODERATOR: ${ctx.host.name}
 
@@ -137,6 +152,7 @@ INSTRUCTIONS:
 8. Each turn should be substantive but concise
 9. Build tension and release through the arc
 10. Conclude with final statements
+${getStyleGuideRules()}
 
 Begin the debate now:`;
 }
@@ -147,7 +163,11 @@ Begin the debate now:`;
 export function createDialoguePrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
-  return `You are writing a casual conversation between two radio DJs for AI Radio ${year}, broadcasting from the year ${year}.
+  return `${RADIO_2525_SYSTEM_PROMPT}
+
+---
+
+You are writing a casual conversation between two radio DJs for AI Radio ${year}, broadcasting from the year ${year}.
 
 DJ 1: ${ctx.host.name}
 Personality: ${ctx.host.personality}
@@ -175,6 +195,7 @@ INSTRUCTIONS:
 8. Each turn should be 1-3 sentences
 9. Natural interruptions and finishing each other's thoughts are good
 10. Make listeners feel like they're eavesdropping on friends chatting
+${getStyleGuideRules()}
 
 Begin the conversation now:`;
 }

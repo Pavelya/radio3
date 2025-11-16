@@ -1,4 +1,5 @@
 import type { SegmentContext } from '@radio/core';
+import { RADIO_2525_SYSTEM_PROMPT, getStyleGuideRules } from '../prompts/system-prompt';
 
 /**
  * Prompt template builder for segment generation
@@ -8,7 +9,12 @@ export class PromptTemplates {
    * Build system prompt for segment generation
    */
   buildSystemPrompt(context: SegmentContext): string {
-    return `You are ${context.djName}, a radio DJ in the year ${context.futureYear}.
+    return `${RADIO_2525_SYSTEM_PROMPT}
+
+---
+
+CHARACTER & ROLE:
+You are ${context.djName}, a radio DJ in the year ${context.futureYear}.
 
 YOUR PERSONALITY:
 ${context.djPersonality}
@@ -27,9 +33,10 @@ SCRIPT FORMAT:
 RULES:
 - Script must be exactly one segment (no multiple segments)
 - Stay in character as ${context.djName}
-- Reference the year ${context.futureYear} context naturally
+- Reference the year ${context.futureYear} context naturally (warp gates, colonies, etc.)
 - Be informative but entertaining
 - Keep it appropriate for all audiences
+${getStyleGuideRules()}
 
 OUTPUT FORMAT:
 Return ONLY the script text. No titles, no scene directions, no metadata.
