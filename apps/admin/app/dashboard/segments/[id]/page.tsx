@@ -12,7 +12,11 @@ export default async function SegmentDetailPage({
 
   const { data: segment, error } = await supabase
     .from('segments')
-    .select('*, programs(name, djs(name, voice_id)), assets(*)')
+    .select(`
+      *,
+      programs(name, dj:djs!fk_programs_dj(name, voice_id)),
+      asset:assets(*)
+    `)
     .eq('id', params.id)
     .single();
 
@@ -64,7 +68,7 @@ export default async function SegmentDetailPage({
             <label className="block text-sm font-medium text-gray-700">
               DJ
             </label>
-            <p className="mt-1">{segment.programs?.djs?.name || '-'}</p>
+            <p className="mt-1">{segment.programs?.dj?.name || '-'}</p>
           </div>
 
           <div>
@@ -145,19 +149,19 @@ export default async function SegmentDetailPage({
         )}
 
         {/* Audio Asset */}
-        {segment.assets && (
+        {segment.asset && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Audio Asset
             </label>
             <AudioPlayer
-              assetId={segment.assets.id}
-              storagePath={segment.assets.storage_path}
+              assetId={segment.asset.id}
+              storagePath={segment.asset.storage_path}
             />
             <div className="mt-2 text-sm text-gray-600">
-              <strong>LUFS:</strong> {segment.assets.lufs_integrated || '-'} |{' '}
-              <strong>Peak:</strong> {segment.assets.peak_db || '-'}dB |{' '}
-              <strong>Status:</strong> {segment.assets.validation_status}
+              <strong>LUFS:</strong> {segment.asset.lufs_integrated || '-'} |{' '}
+              <strong>Peak:</strong> {segment.asset.peak_db || '-'}dB |{' '}
+              <strong>Status:</strong> {segment.asset.validation_status}
             </div>
           </div>
         )}

@@ -11,7 +11,11 @@ export default async function SegmentsPage({
 
   let query = supabase
     .from('segments')
-    .select('*, programs(name, djs(name)), assets(id, storage_path)')
+    .select(`
+      *,
+      programs(name, dj:djs!fk_programs_dj(name)),
+      asset:assets(id, storage_path)
+    `)
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -111,7 +115,7 @@ export default async function SegmentsPage({
               <tr key={segment.id}>
                 <td className="px-6 py-4 text-sm">
                   <div>{segment.programs?.name || '-'}</div>
-                  <div className="text-gray-500">{segment.programs?.djs?.name || '-'}</div>
+                  <div className="text-gray-500">{segment.programs?.dj?.name || '-'}</div>
                 </td>
                 <td className="px-6 py-4 text-sm">{segment.slot_type}</td>
                 <td className="px-6 py-4">
@@ -146,7 +150,7 @@ export default async function SegmentsPage({
                   {new Date(segment.created_at).toLocaleString()}
                 </td>
                 <td className="px-6 py-4">
-                  {segment.asset_id && segment.assets ? (
+                  {segment.asset_id && segment.asset ? (
                     <Link
                       href={`/dashboard/segments/${segment.id}#audio`}
                       className="text-blue-600 hover:text-blue-800 text-sm"

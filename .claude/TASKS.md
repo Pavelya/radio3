@@ -22935,6 +22935,7 @@ open http://localhost:3001/dashboard/lore
 ----------------------------
 
 # Task L3: Optimism/Realism Balance Monitor
+You may adjust the task specs if you see that the current description is in conflict with the actual architecture
 
 **Tier:** Lore & Tone  
 **Estimated Time:** 45 minutes  

@@ -1,4 +1,5 @@
 import { ScheduleGenerator } from './schedule-generator';
+import { aggregateDailyToneMetrics } from './tone-aggregator';
 import { createLogger } from '@radio/core';
 import { addDays } from 'date-fns';
 import { config } from 'dotenv';
@@ -52,6 +53,18 @@ async function main() {
         // Also generate for day after tomorrow to stay ahead
         const dayAfterTomorrow = addDays(new Date(), 2);
         await generator.generateScheduleForDate(dayAfterTomorrow);
+
+        // Aggregate tone metrics for yesterday
+        try {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          logger.info({ date: yesterdayStr }, 'Aggregating tone metrics');
+          await aggregateDailyToneMetrics(yesterdayStr);
+        } catch (error) {
+          logger.error({ error }, 'Tone aggregation failed');
+          // Don't fail the whole scheduler if tone aggregation fails
+        }
 
       } catch (error) {
         logger.error({ error }, 'Scheduler run failed');

@@ -25,7 +25,7 @@ export default async function SchedulePage({
   // Fetch segments for the day
   const { data: segments, error } = await supabase
     .from('segments')
-    .select('*, programs(name, djs(name))')
+    .select('*, programs(name, dj:djs!fk_programs_dj(name))')
     .gte('scheduled_start_ts', dayStart.toISOString())
     .lt('scheduled_start_ts', dayEnd.toISOString())
     .order('scheduled_start_ts', { ascending: true });
