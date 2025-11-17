@@ -46,7 +46,12 @@ export default function ProgramForm({
   mode,
 }: ProgramFormProps) {
   const [name, setName] = useState(program?.name || '');
-  const [djId, setDjId] = useState(program?.dj_id || '');
+  const [djIds, setDjIds] = useState<string[]>(
+    program?.djIds || (program?.dj_id ? [program.dj_id] : [])
+  );
+  const [conversationFormat, setConversationFormat] = useState(
+    program?.conversation_format || ''
+  );
   const [formatClockId, setFormatClockId] = useState(program?.format_clock_id || '');
   const [description, setDescription] = useState(program?.description || '');
   const [genre, setGenre] = useState(program?.genre || '');
@@ -83,8 +88,14 @@ export default function ProgramForm({
       return;
     }
 
-    if (!djId) {
-      setError('Please select a DJ');
+    if (djIds.length === 0) {
+      setError('Please select at least one DJ');
+      setLoading(false);
+      return;
+    }
+
+    if (djIds.length > 1 && !conversationFormat) {
+      setError('Please select a conversation format for multi-DJ programs');
       setLoading(false);
       return;
     }
@@ -97,31 +108,72 @@ export default function ProgramForm({
 
     const programData: any = {
       name: name.trim(),
-      dj_id: djId,
       format_clock_id: formatClockId,
       description: description.trim() || null,
       genre: genre || null,
       preferred_time_of_day: preferredTimeOfDay || null,
       preferred_days: preferredDays.length > 0 ? preferredDays : null,
+      conversation_format: djIds.length > 1 ? conversationFormat : null,
       active,
     };
 
     try {
       if (mode === 'create') {
-        const { error: insertError } = await supabase
+        // Insert program
+        const { data: newProgram, error: insertError } = await supabase
           .from('programs')
-          .insert([programData]);
+          .insert([programData])
+          .select()
+          .single();
 
         if (insertError) throw insertError;
 
+        // Insert program_djs relationships
+        const programDjsData = djIds.map((djId, index) => ({
+          program_id: newProgram.id,
+          dj_id: djId,
+          role: index === 0 ? 'host' : (djIds.length === 2 ? 'guest' : 'panelist'),
+          speaking_order: index + 1,
+        }));
+
+        const { error: djsError } = await supabase
+          .from('program_djs')
+          .insert(programDjsData);
+
+        if (djsError) throw djsError;
+
         router.push('/dashboard/programs');
+
       } else {
+        // Update program
         const { error: updateError } = await supabase
           .from('programs')
           .update(programData)
           .eq('id', program.id);
 
         if (updateError) throw updateError;
+
+        // Delete existing program_djs
+        const { error: deleteError } = await supabase
+          .from('program_djs')
+          .delete()
+          .eq('program_id', program.id);
+
+        if (deleteError) throw deleteError;
+
+        // Insert new program_djs relationships
+        const programDjsData = djIds.map((djId, index) => ({
+          program_id: program.id,
+          dj_id: djId,
+          role: index === 0 ? 'host' : (djIds.length === 2 ? 'guest' : 'panelist'),
+          speaking_order: index + 1,
+        }));
+
+        const { error: djsError } = await supabase
+          .from('program_djs')
+          .insert(programDjsData);
+
+        if (djsError) throw djsError;
 
         router.push('/dashboard/programs');
       }
@@ -204,26 +256,91 @@ export default function ProgramForm({
 
       {/* DJ Selection */}
       <div>
-        <label className="block text-sm font-medium text-gray-700">DJ *</label>
-        <select
-          required
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-          value={djId}
-          onChange={(e) => setDjId(e.target.value)}
-        >
-          <option value="">Select a DJ...</option>
-          {djs.map((dj) => (
-            <option key={dj.id} value={dj.id}>
-              {dj.name}
-            </option>
-          ))}
-        </select>
-        {djs.length === 0 && (
-          <p className="mt-1 text-sm text-yellow-600">
-            No DJs available. Please create a DJ first.
-          </p>
-        )}
+        <label className="block text-sm font-medium text-gray-700">
+          DJ(s) *
+          <span className="text-xs text-gray-500 ml-2">
+            Select multiple for conversations
+          </span>
+        </label>
+
+        {/* Multi-select checkboxes */}
+        <div className="mt-2 max-h-60 overflow-y-auto border border-gray-300 rounded-md p-3">
+          {djs.length === 0 ? (
+            <p className="text-sm text-yellow-600">
+              No DJs available. Please create a DJ first.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {djs.map((dj) => (
+                <label
+                  key={dj.id}
+                  className={`flex items-center p-2 rounded cursor-pointer transition-colors ${
+                    djIds.includes(dj.id)
+                      ? 'bg-blue-50 border border-blue-300'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={djIds.includes(dj.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setDjIds([...djIds, dj.id]);
+                      } else {
+                        setDjIds(djIds.filter(id => id !== dj.id));
+                      }
+                    }}
+                    className="form-checkbox h-4 w-4 text-blue-600 rounded"
+                  />
+                  <span className="ml-2 text-sm font-medium text-gray-900">
+                    {dj.name}
+                  </span>
+                  <span className="ml-auto text-xs text-gray-500">{dj.slug}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <p className="mt-1 text-xs text-gray-500">
+          {djIds.length === 0 && 'Select at least one DJ'}
+          {djIds.length === 1 && '1 DJ selected (monologue format)'}
+          {djIds.length > 1 && `${djIds.length} DJs selected (conversation format)`}
+        </p>
       </div>
+
+      {/* Conversation Format Selection (conditional) */}
+      {djIds.length > 1 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Conversation Format *
+          </label>
+          <select
+            required={djIds.length > 1}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            value={conversationFormat}
+            onChange={(e) => setConversationFormat(e.target.value)}
+          >
+            <option value="">Select conversation format...</option>
+            {djIds.length === 2 && (
+              <>
+                <option value="interview">Interview (Q&A with expert guest)</option>
+                <option value="dialogue">DJ Dialogue (Two DJs chatting)</option>
+              </>
+            )}
+            {djIds.length >= 3 && (
+              <>
+                <option value="panel">Panel Discussion (Multiple experts)</option>
+                <option value="debate">Debate (Opposing viewpoints)</option>
+              </>
+            )}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            {djIds.length === 2 && 'Interview: One host interviews a guest. Dialogue: Two DJs discuss a topic.'}
+            {djIds.length >= 3 && 'Panel: Multiple experts discuss. Debate: Opposing viewpoints clash.'}
+          </p>
+        </div>
+      )}
 
       {/* Format Clock Selection */}
       <div>

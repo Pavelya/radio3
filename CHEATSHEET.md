@@ -127,8 +127,101 @@ node infra/migrate.js down
 node infra/migrate.js up
 node infra/seed.js
 
-# Cleanup old segments
+# Cleanup old segments (SMART - recommended)
+# Selectively deletes old incomplete segments while preserving ready ones
+# Deletes: queued, retrieving, generating, rendering, normalizing, failed segments
+# Keeps: All ready, airing, aired, archived segments
+# Also removes orphaned jobs (segment_make jobs with no segments)
+
+# Preview what would be deleted
+node infra/cleanup-old-segments.js --dry-run
+
+# Run cleanup with default settings (1 day retention)
+node infra/cleanup-old-segments.js
+
+# Adjust retention period
+node infra/cleanup-old-segments.js --days=2           # Keep last 2 days
+
+# Cleanup EVERYTHING (nuclear option - use with caution!)
+# Deletes ALL segments, jobs, DLQ items, health checks
 node infra/cleanup.js
+
+## Cleanup Scenarios - What to Run When
+
+### Scenario 1: Normal Maintenance (Weekly/Monthly)
+# Situation: System running fine, just cleaning up old failed segments
+# What to run:
+node infra/cleanup-old-segments.js --dry-run  # Preview first
+node infra/cleanup-old-segments.js            # Clean up last 24 hours
+
+### Scenario 2: Changed/Deleted Programs
+# Situation: You edited or deleted a program, old segments still in database
+# Example: Deleted "Morning News", created "New Morning Show"
+# Problem: Old segments from deleted program will still play
+# What to run:
+node infra/cleanup-old-segments.js --days=7   # Remove old incomplete segments from last week
+# OR for complete reset:
+node infra/cleanup.js                         # Delete ALL segments, start fresh
+
+### Scenario 3: System Stuck in the Past
+# Situation: Playout playing content from days ago, wrong dates in audio
+# Example: Today is Nov 17, but DJ says "Good morning, it's Nov 9"
+# Problem: Many old ready segments with past timestamps
+# What to run:
+node infra/cleanup.js                         # Nuclear option - delete everything
+# Then wait 5 minutes for scheduler to create fresh segments
+
+### Scenario 4: Too Many Queued Segments (System Overload)
+# Situation: Thousands of queued/failed segments, dashboard shows huge numbers
+# Problem: Workers can't keep up, system out of sync
+# What to run:
+node infra/cleanup-old-segments.js --dry-run  # See how many would be deleted
+node infra/cleanup-old-segments.js --days=1   # Keep only last day
+# Check dashboard, if still too many:
+node infra/cleanup.js                         # Complete reset
+
+### Scenario 5: Broadcast Was Down, Workers Kept Running
+# Situation: Playout stopped, but workers created segments for multiple days
+# Problem: Now have segments for 3+ days in the future
+# What to run:
+node infra/cleanup-old-segments.js --days=1   # Remove segments older than 1 day
+# This is usually fine - extra ready segments don't hurt
+
+### Scenario 6: Workers Were Down, Broadcast Kept Running
+# Situation: Workers stopped, playout ran out of segments, played emergency audio
+# Problem: Need to generate new segments quickly
+# What to run:
+# No cleanup needed! Just restart workers:
+pnpm --filter @radio/scheduler-worker start
+pnpm --filter @radio/segment-gen-worker start
+# Wait 5-10 minutes for segments to generate
+
+### Scenario 7: Fresh Start for Testing/Development
+# Situation: Want clean slate for testing new features
+# What to run:
+node infra/cleanup.js                         # Delete everything
+node infra/migrate.js down                    # Optional: reset database
+node infra/migrate.js up
+node infra/seed.js                            # Recreate seed data
+# Wait for scheduler to create new segments
+
+### Scenario 8: After Major Configuration Changes
+# Situation: Changed format clocks, weekly schedule, or multiple programs
+# Problem: Old segments don't match new configuration
+# What to run:
+node infra/cleanup.js                         # Delete all segments
+# Restart scheduler to generate fresh segments
+pkill -f scheduler-worker
+pnpm --filter @radio/scheduler-worker start
+
+## Quick Decision Tree
+
+# Check dashboard first:
+# - If < 100 queued/failed segments → Run selective cleanup (cleanup-old-segments.js)
+# - If > 100 old segments → Consider nuclear cleanup (cleanup.js)
+# - If content has wrong dates → Nuclear cleanup required
+# - If just changed programs → Nuclear cleanup recommended
+# - If system running fine → No cleanup needed, or just maintenance cleanup
 ```
 
 ## Testing

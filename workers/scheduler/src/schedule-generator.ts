@@ -25,6 +25,8 @@ interface ProgramWithFormatClock {
   name: string;
   dj_id: string;
   format_clock_id: string;
+  conversation_format?: string | null;
+  program_djs?: Array<{ dj_id: string; role: string; speaking_order: number }>;
   format_clocks: FormatClock[] | FormatClock | null;
 }
 
@@ -66,10 +68,18 @@ export class ScheduleGenerator {
     logger.info({ date: format(date, 'yyyy-MM-dd') }, 'Generating schedule');
 
     try {
-      // Fetch active programs with format clocks
+      // Fetch active programs with format clocks and DJs
       const { data: programs, error: programsError } = await this.db
         .from('programs')
-        .select('id, name, dj_id, format_clock_id, format_clocks!fk_programs_format_clock(id, name, description)')
+        .select(`
+          id,
+          name,
+          dj_id,
+          format_clock_id,
+          conversation_format,
+          program_djs(dj_id, role, speaking_order),
+          format_clocks!fk_programs_format_clock(id, name, description)
+        `)
         .eq('active', true);
 
       if (programsError) throw programsError;
@@ -155,10 +165,16 @@ export class ScheduleGenerator {
           // Convert to future year (2525)
           const futureSlotStart = this.toFutureYear(slotStart);
 
+          // Determine participant count from program_djs
+          const programDjs = program.program_djs || [];
+          const participantCount = programDjs.length || 1;
+
           // Create segment
           const segment = {
             program_id: program.id,
             slot_type: slot.slot_type,
+            conversation_format: program.conversation_format || null,
+            participant_count: participantCount,
             lang: 'en',
             state: 'queued',
             scheduled_start_ts: futureSlotStart.toISOString(),

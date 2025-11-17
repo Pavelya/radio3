@@ -8,7 +8,10 @@ export default async function ProgramsPage() {
     .from('programs')
     .select(`
       *,
-      dj:djs!fk_programs_dj(id, name, slug),
+      program_djs(
+        speaking_order,
+        dj:djs(id, name, slug)
+      ),
       format_clock:format_clocks!fk_programs_format_clock(id, name)
     `)
     .order('created_at', { ascending: false });
@@ -37,7 +40,7 @@ export default async function ProgramsPage() {
                 Program Name
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                DJ
+                DJ(s)
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Format
@@ -67,8 +70,29 @@ export default async function ProgramsPage() {
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {program.dj?.name || 'N/A'}
+                <td className="px-4 py-4 text-sm text-gray-900">
+                  {program.program_djs && program.program_djs.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {program.program_djs
+                        .sort((a: any, b: any) => a.speaking_order - b.speaking_order)
+                        .map((pd: any, idx: number) => (
+                          <span
+                            key={pd.dj.id}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                          >
+                            {pd.dj.name}
+                            {idx === 0 && <span className="ml-1 text-blue-600">★</span>}
+                          </span>
+                        ))}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">No DJ assigned</span>
+                  )}
+                  {program.conversation_format && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      ({program.conversation_format})
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                   {program.format_clock?.name || 'N/A'}

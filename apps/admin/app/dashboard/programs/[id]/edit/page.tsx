@@ -14,6 +14,7 @@ export default async function EditProgramPage({
     .from('programs')
     .select(`
       *,
+      program_djs(dj_id, role, speaking_order),
       dj:djs!fk_programs_dj(id, name, slug),
       format_clock:format_clocks!fk_programs_format_clock(id, name)
     `)
@@ -23,6 +24,11 @@ export default async function EditProgramPage({
   if (error || !program) {
     notFound();
   }
+
+  // Extract DJ IDs from program_djs for form
+  const djIds = program.program_djs
+    ?.sort((a: any, b: any) => a.speaking_order - b.speaking_order)
+    .map((pd: any) => pd.dj_id) || [];
 
   // Fetch available DJs and format clocks for dropdowns
   const [djsResult, formatClocksResult] = await Promise.all([
@@ -41,7 +47,7 @@ export default async function EditProgramPage({
       <h1 className="text-2xl font-bold mb-6">Edit Program</h1>
       <div className="bg-white shadow rounded-lg p-6">
         <ProgramForm
-          program={program}
+          program={{ ...program, djIds }}
           mode="edit"
           djs={djsResult.data || []}
           formatClocks={formatClocksResult.data || []}

@@ -267,12 +267,25 @@ export class SegmentGenHandler {
   }
 
   /**
-   * Fetch segment from database
+   * Fetch segment from database with program and DJ information
    */
   private async fetchSegment(segmentId: string): Promise<any> {
     const { data, error } = await this.db
       .from('segments')
-      .select('*')
+      .select(`
+        *,
+        programs!fk_segments_program(
+          id,
+          name,
+          conversation_format,
+          program_djs(
+            dj_id,
+            role,
+            speaking_order,
+            dj:djs(id, name, slug, voice_id, personality_traits, expertise)
+          )
+        )
+      `)
       .eq('id', segmentId)
       .single();
 
@@ -441,7 +454,36 @@ export class SegmentGenHandler {
       'Generating multi-speaker segment'
     );
 
-    // 1. Fetch conversation participants
+    // 1. Check if conversation_participants exist, if not create from program_djs
+    const { data: existingParticipants } = await this.db
+      .from('conversation_participants')
+      .select('id')
+      .eq('segment_id', segmentId);
+
+    if (!existingParticipants || existingParticipants.length === 0) {
+      // Create conversation_participants from program_djs
+      if (segment.programs?.program_djs?.length > 1) {
+        const participantsToInsert = segment.programs.program_djs.map((pd: any) => ({
+          segment_id: segmentId,
+          dj_id: pd.dj_id,
+          role: pd.role,
+          speaking_order: pd.speaking_order,
+        }));
+
+        const { error: insertError } = await this.db
+          .from('conversation_participants')
+          .insert(participantsToInsert);
+
+        if (insertError) {
+          logger.error({ error: insertError }, 'Failed to create conversation participants');
+          throw insertError;
+        }
+
+        logger.info({ segmentId, participants: participantsToInsert.length }, 'Created conversation participants from program_djs');
+      }
+    }
+
+    // 2. Fetch conversation participants with DJ details
     const { data: participants, error: participantsError } = await this.db
       .from('conversation_participants')
       .select('*, djs(*)')
@@ -456,7 +498,7 @@ export class SegmentGenHandler {
       throw new Error('Multi-speaker segment needs at least 2 participants');
     }
 
-    // 2. Identify host and other participants
+    // 3. Identify host and other participants
     const host = participants.find(p => p.role === 'host') || participants[0];
     const otherParticipants = participants.filter(p => p.id !== host.id);
 
