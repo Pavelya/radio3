@@ -89,9 +89,18 @@ export class SegmentGenHandler {
       const dj = await this.fetchDJ(segment.program_id);
 
       // 4. Retrieve RAG context
+      // Use the segment's scheduled broadcast time, not current time
+      const broadcastTime = segment.scheduled_start_ts || new Date().toISOString();
+
+      logger.info({
+        segment_id,
+        scheduled_start: segment.scheduled_start_ts,
+        broadcast_time: broadcastTime,
+      }, 'Using scheduled broadcast time for generation');
+
       const ragQuery = this.ragClient.buildQuery(
         segment,
-        new Date().toISOString()
+        broadcastTime
       );
 
       const ragResult = await this.ragClient.retrieve(ragQuery);
@@ -111,7 +120,7 @@ export class SegmentGenHandler {
         targetDuration: this.getTargetDuration(segment.slot_type),
         djName: dj.name,
         djPersonality: dj.personality_traits,
-        referenceTime: new Date().toISOString(),
+        referenceTime: broadcastTime,
         ragChunks: ragResult.chunks,
         futureYear: getFutureYear()
       });
@@ -452,9 +461,18 @@ export class SegmentGenHandler {
     const otherParticipants = participants.filter(p => p.id !== host.id);
 
     // 3. Retrieve RAG context
+    // Use the segment's scheduled broadcast time, not current time
+    const broadcastTime = segment.scheduled_start_ts || new Date().toISOString();
+
+    logger.info({
+      segmentId,
+      scheduled_start: segment.scheduled_start_ts,
+      broadcast_time: broadcastTime,
+    }, 'Using scheduled broadcast time for multi-speaker generation');
+
     const ragQuery = this.ragClient.buildQuery(
       segment,
-      new Date().toISOString()
+      broadcastTime
     );
 
     const ragResult = await this.ragClient.retrieve(ragQuery);
@@ -499,6 +517,7 @@ export class SegmentGenHandler {
       retrievedContext,
       duration: segment.duration_sec || this.getTargetDuration(segment.slot_type),
       tone: this.determineTone(segment.slot_type),
+      referenceTime: broadcastTime,
       futureYear: getFutureYear(),
     };
 

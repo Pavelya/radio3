@@ -65,13 +65,19 @@ export class RAGClient {
   }
 
   /**
-   * Build query from segment requirements
+   * Build time-aware RAG query
+   *
+   * IMPORTANT: referenceTime should be the segment's scheduled_start_ts (future time),
+   * NOT the real-world current time. This ensures RAG retrieves content appropriate
+   * for the broadcast date in the fictional year 2525.
+   *
    * Creates time-aware, context-specific queries
    */
   buildQuery(segment: any, referenceTime: string): RAGQuery {
     // Parse reference time for context
+    // NOTE: This should be the BROADCAST time (e.g. 2525-01-16), not generation time
     const refDate = new Date(referenceTime);
-    const year = refDate.getFullYear();
+    const year = refDate.getFullYear(); // Should be 2525 (or configured year), not 2025!
     const month = refDate.toLocaleDateString('en-US', { month: 'long' });
     const day = refDate.getDate();
 

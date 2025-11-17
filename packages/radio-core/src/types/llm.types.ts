@@ -72,6 +72,7 @@ export type ConversationContext = {
   retrievedContext: string;
   duration: number; // seconds
   tone: string;
+  referenceTime?: string; // Broadcast time (e.g., "2525-01-16T10:30:00Z")
   futureYear?: number; // Default 2525
 };
 

@@ -11,11 +11,24 @@ import { RADIO_2525_SYSTEM_PROMPT, getStyleGuideRules } from '../prompts/system-
 export function createInterviewPrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
+  // Format broadcast time if provided
+  const broadcastTimeInfo = ctx.referenceTime
+    ? `\n\nBROADCAST TIME: ${new Date(ctx.referenceTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })} (Year ${year})\nThis is the current date and time in your world.`
+    : '';
+
   return `${RADIO_2525_SYSTEM_PROMPT}
 
 ---
 
-You are writing a radio interview script for AI Radio ${year}, broadcasting from the year ${year}.
+You are writing a radio interview script for AI Radio ${year}, broadcasting from the year ${year}.${broadcastTimeInfo}
 
 HOST: ${ctx.host.name}
 Personality: ${ctx.host.personality}
@@ -71,11 +84,24 @@ export function createPanelPrompt(ctx: ConversationContext): string {
     .map(p => `- ${p.name} (${p.role}): ${p.expertise || 'Expert panelist'}`)
     .join('\n');
 
+  // Format broadcast time if provided
+  const broadcastTimeInfo = ctx.referenceTime
+    ? `\n\nBROADCAST TIME: ${new Date(ctx.referenceTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })} (Year ${year})\nThis is the current date and time in your world.`
+    : '';
+
   return `${RADIO_2525_SYSTEM_PROMPT}
 
 ---
 
-You are writing a panel discussion script for AI Radio ${year}, broadcasting from the year ${year}.
+You are writing a panel discussion script for AI Radio ${year}, broadcasting from the year ${year}.${broadcastTimeInfo}
 
 HOST/MODERATOR: ${ctx.host.name}
 Personality: ${ctx.host.personality}
@@ -123,11 +149,24 @@ Begin the panel discussion now:`;
 export function createDebatePrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
+  // Format broadcast time if provided
+  const broadcastTimeInfo = ctx.referenceTime
+    ? `\n\nBROADCAST TIME: ${new Date(ctx.referenceTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })} (Year ${year})\nThis is the current date and time in your world.`
+    : '';
+
   return `${RADIO_2525_SYSTEM_PROMPT}
 
 ---
 
-You are writing a debate script for AI Radio ${year}, broadcasting from the year ${year}.
+You are writing a debate script for AI Radio ${year}, broadcasting from the year ${year}.${broadcastTimeInfo}
 
 MODERATOR: ${ctx.host.name}
 
@@ -163,11 +202,24 @@ Begin the debate now:`;
 export function createDialoguePrompt(ctx: ConversationContext): string {
   const year = ctx.futureYear || 2525;
 
+  // Format broadcast time if provided
+  const broadcastTimeInfo = ctx.referenceTime
+    ? `\n\nBROADCAST TIME: ${new Date(ctx.referenceTime).toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'UTC'
+      })} (Year ${year})\nThis is the current date and time in your world.`
+    : '';
+
   return `${RADIO_2525_SYSTEM_PROMPT}
 
 ---
 
-You are writing a casual conversation between two radio DJs for AI Radio ${year}, broadcasting from the year ${year}.
+You are writing a casual conversation between two radio DJs for AI Radio ${year}, broadcasting from the year ${year}.${broadcastTimeInfo}
 
 DJ 1: ${ctx.host.name}
 Personality: ${ctx.host.personality}

@@ -56,15 +56,29 @@ ${chunk.chunk_text}
       })
       .join('\n\n---\n\n');
 
-    return `Current date/time: ${context.referenceTime}
+    // Format broadcast time in a clear, human-readable format
+    const broadcastDate = new Date(context.referenceTime);
+    const formattedDate = broadcastDate.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC'
+    });
+
+    return `BROADCAST TIME: ${formattedDate} (Year ${context.futureYear})
+This is the current date and time in your world.
 
 RELEVANT INFORMATION FROM KNOWLEDGE BASE:
 ${chunks}
 
 ---
 
-Using the information above, create a ${context.slotType} segment.
-Remember: You are speaking to listeners in the year ${context.futureYear}.
+Using the information above, create a ${context.slotType} segment for broadcast.
+You are speaking to listeners living in the year ${context.futureYear}.
+Naturally reference today's date (${formattedDate}) as appropriate for your segment.
 Script duration target: ${context.targetDuration} seconds.
 
 Begin your script now:`;
