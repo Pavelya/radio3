@@ -223,7 +223,7 @@ router.post('/segment-complete/:segment_id', async (req, res) => {
       })
       .eq('id', segment_id)
       .eq('state', 'airing')
-      .select();
+      .select('*, assets(id, storage_path)');
 
     if (error) {
       logger.error({ error, segmentId: segment_id }, 'Failed to mark segment complete');
@@ -237,6 +237,29 @@ router.post('/segment-complete/:segment_id', async (req, res) => {
     }
 
     logger.info({ segmentId: segment_id }, 'Segment marked as aired');
+
+    // Cleanup: Delete final audio file to save storage (free tier optimization)
+    const segment = data[0];
+    if (segment.assets?.id) {
+      const finalPath = `final/${segment.assets.id}.wav`;
+
+      const { error: deleteError } = await db.storage
+        .from('audio-assets')
+        .remove([finalPath]);
+
+      if (deleteError) {
+        logger.warn({
+          error: deleteError,
+          segmentId: segment_id,
+          finalPath
+        }, 'Failed to delete final audio file');
+      } else {
+        logger.info({
+          segmentId: segment_id,
+          finalPath
+        }, 'Final audio file deleted (storage saved)');
+      }
+    }
 
     res.json({
       status: 'ok',

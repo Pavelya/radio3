@@ -142,9 +142,16 @@ node infra/cleanup-old-segments.js
 # Adjust retention period
 node infra/cleanup-old-segments.js --days=2           # Keep last 2 days
 
-# Cleanup EVERYTHING (nuclear option - use with caution!)
-# Deletes ALL segments, jobs, DLQ items, health checks
+# Cleanup database (segments, assets, jobs, DLQ items, health checks)
 node infra/cleanup.js
+
+# Cleanup storage bucket (ALL audio files)
+# Preview first with --dry-run
+node infra/cleanup-storage.js --dry-run
+node infra/cleanup-storage.js
+
+# Complete cleanup (database + storage - NUCLEAR OPTION!)
+node infra/cleanup.js && node infra/cleanup-storage.js
 
 ## Cleanup Scenarios - What to Run When
 

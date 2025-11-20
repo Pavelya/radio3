@@ -282,7 +282,7 @@ export class SegmentGenHandler {
             dj_id,
             role,
             speaking_order,
-            dj:djs(id, name, slug, voice_id, personality_traits, expertise)
+            dj:djs(id, name, slug, voice_id, personality_traits, specializations)
           )
         )
       `)

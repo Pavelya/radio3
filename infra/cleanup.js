@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
  * Database cleanup script
- * Deletes all dynamic test data (segments, jobs, DLQ, health checks)
+ * Deletes all dynamic test data (segments, assets, jobs, DLQ, health checks)
  *
  * Usage:
  *   node infra/cleanup.js
+ *
+ * Note: This only cleans the database. To also clean storage files, run:
+ *   node infra/cleanup-storage.js
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -66,7 +69,21 @@ async function cleanup() {
 
     logger.info({ count: segmentsCount }, 'Segments deleted');
 
-    // 4. Delete all worker health checks
+    // 4. Delete all assets
+    logger.info('Deleting all assets');
+    const { error: assetsError, count: assetsCount } = await supabase
+      .from('assets')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+    if (assetsError) {
+      logger.error({ error: assetsError }, 'Failed to delete assets');
+      throw assetsError;
+    }
+
+    logger.info({ count: assetsCount }, 'Assets deleted');
+
+    // 5. Delete all worker health checks
     logger.info('Deleting all worker health checks');
     const { error: healthError, count: healthCount } = await supabase
       .from('health_checks')
@@ -85,6 +102,7 @@ async function cleanup() {
       jobs: jobsCount || 0,
       dlq: dlqCount || 0,
       segments: segmentsCount || 0,
+      assets: assetsCount || 0,
       healthChecks: healthCount || 0
     }, 'Cleanup complete');
 

@@ -129,6 +129,17 @@ export class MasteringHandler {
         result.outputPath
       );
 
+      // 5.5 Delete raw file to save storage
+      const { error: deleteError } = await this.db.storage
+        .from('audio-assets')
+        .remove([asset.storage_path]);
+
+      if (deleteError) {
+        logger.warn({ error: deleteError, rawPath: asset.storage_path }, 'Failed to delete raw file');
+      } else {
+        logger.info({ rawPath: asset.storage_path }, 'Raw file deleted (storage saved)');
+      }
+
       // 6. Update asset record
       await this.updateAsset(asset_id, {
         lufs_integrated: result.lufsIntegrated,
